@@ -14,6 +14,8 @@ import ExamPages from "@/pages/ExamPages"; // Halaman Ujian Real-Time
 import PlannerPage from "./pages/PlannerPage";
 import NotFound from "./pages/NotFound";
 import Header from "./components/Header";
+import QuizPage from "./pages/QuizPages";
+import DictionaryPage from "./pages/DictPages";
 
 const queryClient = new QueryClient();
 
@@ -48,6 +50,9 @@ const App = () => (
           {/* Rute Simulasi Ujian (Timer & Soal Interaktif) */}
           {/* Ini yang kemarin kurang/salah, makanya Not Found */}
           <Route path="/simulation/:examId" element={<ExamPages />} />
+
+          <Route path="/quiz/:levelId" element={<QuizPage />} />
+          <Route path="/dictionary" element={<DictionaryPage />} />
 
           {/* Halaman 404 */}
           <Route path="*" element={<NotFound />} />

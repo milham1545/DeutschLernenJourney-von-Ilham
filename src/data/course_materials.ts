@@ -630,6 +630,40 @@ export const courseMaterials: CourseMaterial[] = [
           "Rumus Gampang: Kalau bisa diganti 'Not a/an' di Inggris, pakai **Kein**. Kalau 'Not', pakai **Nicht**.",
           "Ingat: Kein berubah sesuai gender (Kein, Keine, Keinen)."
         ]
+      },
+
+      // 19. SUMBER BELAJAR TAMBAHAN (PERPUSTAKAAN A1)
+      {
+        id: "a1_resources_general",
+        title: "19. Perpustakaan A1 (Sumber Gratis Terbaik)",
+        content: [
+          {
+            type: "text",
+            content: "Belajar sendiri butuh banyak sumber. Ini adalah koleksi link gratis terbaik di dunia untuk level pemula yang sudah dikurasi."
+          },
+          {
+            type: "table",
+            headers: ["Nama Sumber", "Tipe", "Kenapa Wajib Coba?"],
+            rows: [
+              ["**Nicos Weg A1 (DW)**", "Film Interaktif", "Ini 'Netflix'-nya belajar Jerman. Cerita Nico yang kehilangan tas. Sangat seru!"],
+              ["**Leo.org**", "Kamus Online", "Kamus terbaik Jerman-Inggris. Ada audionya juga."],
+              ["**Easy German** (YouTube)", "Video Jalanan", "Wawancara orang asli di jalan. Cari playlist 'Super Easy German'."],
+              ["**Verbformen.de**", "Cek Grammar", "Bingung konjugasi? Ketik kata kerjanya di sini, lengkap semua bentuk."]
+            ]
+          },
+          {
+            type: "text",
+            content: "**TIPS CARA PAKAI:**\nJangan hafal kamus! Tonton *Nicos Weg* satu episode sehari, lalu catat kata baru di buku tulis."
+          }
+        ],
+        tips: [
+          "Hindari Google Translate untuk kalimat panjang. Hasilnya sering ngaco secara grammar.",
+          "Gunakan aplikasi **Anki** (Flashcard) untuk menghafal kosakata secara interval."
+        ],
+        resources: [
+          { title: "Nicos Weg A1 (Mulai dari sini!)", url: "https://learngerman.dw.com/en/nicos-weg/c-36519789", type: "web" },
+          { title: "Kamus LEO", url: "https://dict.leo.org/german-english/", type: "web" }
+        ]
       }
     ]
   },
@@ -1116,6 +1150,36 @@ export const courseMaterials: CourseMaterial[] = [
           "Jika dua-duanya pronoun (pendek), Akkusativ menang (Es Ihm)."
         ]
       },
+
+      // 16. PERPUSTAKAAN A2 (SUMBER LANJUTAN)
+      {
+        id: "a2_resources_general",
+        title: "16. Perpustakaan A2 (Latihan Pendengaran)",
+        content: [
+          {
+            type: "text",
+            content: "Di A2, kamu harus mulai membiasakan telinga dengan audio Jerman yang agak lambat."
+          },
+          {
+            type: "table",
+            headers: ["Nama Sumber", "Tipe", "Fokus Belajar"],
+            rows: [
+              ["**Slow German (Annik Rubens)**", "Podcast", "Cerita tentang budaya Jerman yang dibacakan pelan-pelan."],
+              ["**Mein-Deutschbuch.de**", "Website Grammar", "Penjelasan grammar tertulis yang paling rapi dan lengkap."],
+              ["**Nicos Weg A2**", "Film Interaktif", "Lanjutan cerita Nico. Masalah hidupnya makin kompleks (kerja/cinta)."],
+              ["**LyricsTraining**", "Musik", "Belajar bahasa lewat lagu Jerman (Nena, Cro, Namika)."]
+            ]
+          }
+        ],
+        tips: [
+          "Mulai ganti settingan HP ke bahasa Jerman. Itu cara termudah belajar kata teknis (Einstellungen, Speicher, dll).",
+          "Dengarkan podcast saat di jalan/bus. Tidak perlu paham 100%, yang penting telinga terbiasa."
+        ],
+        resources: [
+          { title: "Slow German Podcast", url: "https://slowgerman.com/", type: "audio" },
+          { title: "Penjelasan Grammar Detail", url: "https://mein-deutschbuch.de/grammatik.html", type: "web" }
+        ]
+      }
     ]
   },
 
@@ -1593,6 +1657,35 @@ export const courseMaterials: CourseMaterial[] = [
           "Ciri Genitiv Maskulin/Neutral: Artikel jadi **DES** + Benda tambah **-S** (Des Vaters, Des Wetters).",
           "Di bahasa percakapan santai (Jalanan), orang Jerman sering 'curang' pakai Dativ (*Wegen dem Wetter*). Tapi di Ujian Tulis, WAJIB Genitiv!"
         ]
+      },
+
+      // 19. PERPUSTAKAAN B1 (BERITA & BACAAN)
+      {
+        id: "b1_resources_general",
+        title: "19. Perpustakaan B1 (Berita & Konteks)",
+        content: [
+          {
+            type: "text",
+            content: "Saatnya meninggalkan materi 'buatan' dan mulai konsumsi materi 'asli' tapi yang disederhanakan."
+          },
+          {
+            type: "table",
+            headers: ["Nama Sumber", "Tipe", "Keunggulan"],
+            rows: [
+              ["**Langsam gesprochene Nachrichten**", "Berita (DW)", "Berita asli hari ini, tapi dibacakan jauuuuh lebih lambat. Ada transkripnya."],
+              ["**Deutsch für Euch**", "YouTube", "Penjelasan grammar yang sangat mendalam dan logis (oleh Katja)."],
+              ["**Lingolia**", "Latihan Soal", "Website terbaik untuk latihan soal grammar B1 (gratis sebagian)."],
+              ["**PONS Online**", "Kamus", "Mulai beralih ke kamus Jerman-Jerman (Deutsch als Fremdsprache)."]
+            ]
+          }
+        ],
+        tips: [
+          "Baca berita DW setiap pagi. Coba pahami topik utamanya (Politik? Cuaca? Ekonomi?) tanpa buka kamus dulu.",
+          "Jangan terjemahkan ke Inggris/Indo lagi. Coba cari arti kata di kamus Jerman-Jerman (Duden/Pons)."
+        ],
+        resources: [
+          { title: "Berita Lambat (DW)", url: "https://learngerman.dw.com/de/langsam-gesprochene-nachrichten/s-60040332", type: "audio" }
+        ]
       }
     ]
   },
@@ -1600,7 +1693,7 @@ export const courseMaterials: CourseMaterial[] = [
   // --- LEVEL B2 (SUPER DUPER LENGKAP - FINAL) ---
   {
     id: "B2",
-    title: "Materi B2 - Mahir (Advanced)",
+    title: "Materi B2 - Menengah Atas (Expert)",
     description: "Bahasa tingkat tinggi. Fokus pada nuansa, gaya bahasa akademis, idiom, dan struktur kalimat yang sangat kompleks.",
     sections: [
       // 1. NOMEN-VERB-VERBINDUNGEN (NVV)
@@ -2021,6 +2114,36 @@ export const courseMaterials: CourseMaterial[] = [
         tips: [
           "Di kalimat Pasif tanpa subjek, 'Es' cuma pajangan di depan. Kalau ada kata lain di depan (misal: Heute/Hier), buang 'Es'-nya!",
           "Salah: Hier es wird gearbeitet. Benar: Hier wird gearbeitet."
+        ]
+      },
+
+      // 15. PERPUSTAKAAN B2 (MATERI NATIVE)
+      {
+        id: "b2_resources_general",
+        title: "15. Perpustakaan B2 (Dunia Nyata)",
+        content: [
+          {
+            type: "text",
+            content: "Selamat datang di dunia nyata! Di level ini, sumber belajarmu sama dengan apa yang orang Jerman asli tonton/baca."
+          },
+          {
+            type: "table",
+            headers: ["Nama Sumber", "Kategori", "Deskripsi"],
+            rows: [
+              ["**Tagesschau** (ARD)", "Berita TV", "Berita paling resmi di Jerman. Bahasanya cepat, formal, dan padat (15 menit)."],
+              ["**MrWissen2go**", "YouTube Edukasi", "Pengetahuan umum (Sejarah/Politik) dengan bahasa yang jelas tapi cepat."],
+              ["**Spiegel / Zeit**", "Majalah/Koran", "Artikel opini dengan bahasa tingkat tinggi (C1/C2)."],
+              ["**Duden**", "Kitab Suci", "KBBI-nya Jerman. Cek ejaan, gender, dan asal kata di sini."]
+            ]
+          }
+        ],
+        tips: [
+          "Nonton film/series Jerman di Netflix (Dark, Babylon Berlin, How to Sell Drugs...) dengan subtitle **JERMAN** (bukan Inggris/Indo).",
+          "Ikuti akun meme Jerman (seperti @alman_memes) di Instagram untuk belajar bahasa gaul dan sarkasme."
+        ],
+        resources: [
+          { title: "Tagesschau in 100 Sekunden", url: "https://www.tagesschau.de/multimedia/sendung/tagesschau_in_100_sekunden", type: "video" },
+          { title: "Duden Online", url: "https://www.duden.de/", type: "web" }
         ]
       }
     ]

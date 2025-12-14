@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { levels as lessonData } from "@/data/lessons";
-import { cn } from "@/lib/utils"; 
+import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
-import { 
-  Calendar, CheckCircle2, Target, Clock, 
-  Youtube, ExternalLink, BookOpen, Coffee, GraduationCap, 
-  Headphones, FileText, Globe, RefreshCcw, Sparkles, Music, 
-  ChevronDown, ChevronUp, Info, PlayCircle, PenTool
+import {
+  Calendar, CheckCircle2, Target, Clock,
+  Youtube, ExternalLink, BookOpen, Coffee, GraduationCap,
+  Headphones, FileText, Globe, RefreshCcw, Sparkles,
+  ChevronDown, ChevronUp, Info, PenTool, AlertTriangle
 } from "lucide-react";
 import {
   Accordion,
@@ -98,6 +97,9 @@ const PlannerPage = () => {
   const [completedTasks, setCompletedTasks] = useState<Record<string, boolean>>({});
   const [quote, setQuote] = useState(MOTIVATIONAL_QUOTES[0]);
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+  
+  // State untuk Pop-up Reset
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   useEffect(() => {
     const savedPlan = localStorage.getItem("deutsch_planner_data");
@@ -150,9 +152,14 @@ const PlannerPage = () => {
     for (let week = 1; week <= totalWeeks; week++) {
       const weekDays: DailyTask[] = [];
       const startModuleIndex = Math.floor(currentModuleIndex);
-      const endModuleIndex = Math.min(Math.floor(currentModuleIndex + modulesPerWeek), modules.length - 1);
+      // Ensure end index doesn't exceed array bounds and handles fractional steps
+      let endModuleIndex = Math.floor(currentModuleIndex + modulesPerWeek);
+      // If it's the last week, ensure we include all remaining modules
+      if (week === totalWeeks) {
+          endModuleIndex = modules.length;
+      }
       
-      const currentModules = modules.slice(startModuleIndex, endModuleIndex + 1);
+      const currentModules = modules.slice(startModuleIndex, endModuleIndex);
       const focusTopics = currentModules.map(m => m.title).join(", ");
       const weeklyResource = resources[(week - 1) % resources.length];
       const sundayActivity = SUNDAY_ACTIVITIES[(week - 1) % SUNDAY_ACTIVITIES.length];
@@ -212,13 +219,20 @@ const PlannerPage = () => {
     }
   };
 
-  const resetPlanner = () => {
-    if(confirm("Yakin mau hapus semua progress?")) {
-      setGeneratedPlan(null); setCompletedTasks({});
-      localStorage.removeItem("deutsch_planner_data");
-      localStorage.removeItem("deutsch_planner_progress");
-      setIsSettingsOpen(true);
-    }
+  // Fungsi memicu popup
+  const handleResetClick = () => {
+    setShowResetConfirm(true);
+  };
+
+  // Fungsi eksekusi reset
+  const confirmReset = () => {
+    setGeneratedPlan(null);
+    setCompletedTasks({});
+    localStorage.removeItem("deutsch_planner_data");
+    localStorage.removeItem("deutsch_planner_progress");
+    setIsSettingsOpen(true);
+    setShowResetConfirm(false);
+    toast({ title: "Reset Berhasil 🗑️", description: "Silakan buat rencana baru.", duration: 2000 });
   };
 
   const getDurationText = (months: number) => {
@@ -228,7 +242,7 @@ const PlannerPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20 relative">
       
       {/* HERO & QUOTE */}
       <div className="bg-yellow-50 border-b-4 border-foreground py-10 relative overflow-hidden">
@@ -314,7 +328,7 @@ const PlannerPage = () => {
                       <p className="text-sm text-muted-foreground">Target Aktif:</p>
                       <p className="text-xl font-black text-foreground">Level {selectedLevel}</p>
                     </div>
-                    <Button onClick={resetPlanner} variant="destructive" className="w-full border-2 border-foreground font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
+                    <Button onClick={handleResetClick} variant="destructive" className="w-full border-2 border-foreground font-bold shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
                       <RefreshCcw className="w-4 h-4 mr-2"/> Reset / Ganti Level
                     </Button>
                   </div>
@@ -413,6 +427,41 @@ const PlannerPage = () => {
           )}
         </div>
       </div>
+
+      {/* --- POP-UP CONFIRMATION RESET --- */}
+      {showResetConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <Card className="w-full max-w-md border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white animate-in zoom-in-95 duration-200">
+            <CardHeader className="bg-red-50 border-b-4 border-foreground pb-4 text-center">
+              <div className="mx-auto p-3 bg-red-100 rounded-full border-2 border-red-500 text-red-600 w-fit mb-2 animate-bounce">
+                <AlertTriangle size={32} />
+              </div>
+              <CardTitle className="text-2xl font-black text-red-600 uppercase">Hapus Rencana?</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 text-center space-y-2">
+              <p className="font-bold text-lg text-foreground">Yakin mau mulai dari awal?</p>
+              <p className="text-muted-foreground text-sm">
+                Semua progress centang dan jadwal yang sudah dibuat akan <strong>dihapus permanen</strong>.
+              </p>
+            </CardContent>
+            <div className="p-6 pt-0 flex gap-3">
+              <Button 
+                onClick={() => setShowResetConfirm(false)} 
+                variant="outline" 
+                className="flex-1 border-2 border-foreground font-bold h-12 hover:bg-slate-100"
+              >
+                Batal
+              </Button>
+              <Button 
+                onClick={confirmReset} 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-2 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1 font-black h-12"
+              >
+                YA, HAPUS
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

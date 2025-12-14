@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { BookOpen, Home, CreditCard, BarChart3, Menu, X, ChevronDown, Library, Map, ClipboardCheck } from "lucide-react";
+import { BookOpen, Home, BarChart3, Menu, X, ChevronDown, Library, Map, ClipboardCheck, PenTool, Book, Trophy, CreditCard } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -84,7 +84,7 @@ const Header = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* 4. DROPDOWN UJIAN (CLEAN VERSION) */}
+            {/* 4. DROPDOWN UJIAN */}
             <DropdownMenu>
               <DropdownMenuTrigger className={cn(
                 "flex items-center gap-2 px-3 py-2 font-medium transition-all border-2 border-transparent hover:border-foreground rounded-md outline-none focus:border-foreground data-[state=open]:border-foreground group",
@@ -105,19 +105,49 @@ const Header = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* 5. FLASHCARD */}
-            <Link
-              to="/flashcard"
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 font-medium transition-all border-2 rounded-md",
-                location.pathname === "/flashcard"
+            {/* 5. DROPDOWN LATIHAN (FLASHCARD, DICTIONARY, QUIZ) - UPDATED! */}
+            <DropdownMenu>
+              <DropdownMenuTrigger className={cn(
+                "flex items-center gap-2 px-3 py-2 font-medium transition-all border-2 border-transparent hover:border-foreground rounded-md outline-none focus:border-foreground data-[state=open]:border-foreground group",
+                (location.pathname === "/flashcard" || location.pathname === "/dictionary" || location.pathname.includes("/quiz")) 
                   ? "bg-foreground text-background border-foreground"
                   : "bg-background text-foreground border-transparent hover:border-foreground"
-              )}
-            >
-              <CreditCard size={18} />
-              <span className="hidden lg:inline">Flashcard</span>
-            </Link>
+              )}>
+                <PenTool size={18} />
+                <span>Lainnya</span>
+                <ChevronDown size={16} className="group-data-[state=open]:rotate-180 transition-transform" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56 border-2 border-foreground bg-background shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none mt-2">
+                {/* Flashcard */}
+                <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer">
+                  <Link to="/flashcard" className="w-full font-bold py-2 flex items-center gap-2">
+                    <CreditCard size={16} /> Flashcard
+                  </Link>
+                </DropdownMenuItem>
+                
+                {/* Kamus */}
+                <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer">
+                  <Link to="/dictionary" className="w-full font-bold py-2 flex items-center gap-2">
+                    <Book size={16} /> Kamus Saya
+                  </Link>
+                </DropdownMenuItem>
+
+                <div className="h-[2px] bg-foreground/20 w-full my-1"></div>
+                
+                {/* Quiz */}
+                <div className="px-2 py-1 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
+                  Evaluasi Quiz
+                </div>
+                {levels.map((level) => (
+                  <DropdownMenuItem key={`quiz-${level}`} asChild className="focus:bg-accent focus:text-foreground cursor-pointer">
+                    <Link to={`/quiz/${level}`} className="w-full font-bold py-2 flex justify-between items-center pl-4">
+                      Quiz {level}
+                      <Trophy size={14} className="text-yellow-600" />
+                    </Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* 6. MEIN WEG */}
             <DropdownMenu>
@@ -228,15 +258,44 @@ const Header = () => {
                 </div>
               </div>
 
+              {/* Group Latihan (UPDATED) */}
+              <div className="px-2 mt-2">
+                <div className="px-2 pb-2 text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <PenTool size={14} /> Alat & Latihan
+                </div>
+                <div className="flex flex-col gap-2 px-2">
+                  <Link
+                    to="/flashcard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 font-bold border-2 border-foreground bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-[3px] active:translate-x-[3px] transition-all rounded-md"
+                  >
+                    <CreditCard size={20} /> Flashcard
+                  </Link>
+                  <Link
+                    to="/dictionary"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 font-bold border-2 border-foreground bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-[3px] active:translate-x-[3px] transition-all rounded-md"
+                  >
+                    <Book size={20} /> Kamus Saya
+                  </Link>
+                  
+                  {/* Quiz Grid */}
+                  <div className="grid grid-cols-4 gap-2 mt-1">
+                    {levels.map((level) => (
+                      <Link
+                        key={`mob-quiz-${level}`}
+                        to={`/quiz/${level}`}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="text-center py-2 border-2 border-foreground font-bold bg-yellow-50 text-foreground active:bg-yellow-100 transition-colors rounded-md text-xs"
+                      >
+                        Quiz {level}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
               <div className="border-t-2 border-dashed border-foreground/30 my-2 mx-4"></div>
-              
-              <Link
-                to="/flashcard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-3 font-medium border-2 border-transparent active:bg-accent mx-2 rounded-md transition-colors"
-              >
-                <CreditCard size={20} /> Flashcard
-              </Link>
 
               {/* Group Mein Weg */}
               <div className="px-2 mt-2">

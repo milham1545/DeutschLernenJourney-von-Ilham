@@ -1,83 +1,108 @@
 import { useState } from "react";
-import { RotateCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Volume2, Bookmark, BookmarkCheck } from "lucide-react";
 import { Vocabulary } from "@/data/lessons";
+import { cn } from "@/lib/utils";
 
 interface FlashCardProps {
   vocabulary: Vocabulary;
   index: number;
   total: number;
+  isBookmarked?: boolean;
+  onBookmark?: () => void;
 }
 
-const FlashCard = ({ vocabulary, index, total }: FlashCardProps) => {
+const FlashCard = ({ vocabulary, index, total, isBookmarked, onBookmark }: FlashCardProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
+  const playAudio = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const utterance = new SpeechSynthesisUtterance(vocabulary.german);
+    utterance.lang = "de-DE";
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const handleBookmarkClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onBookmark?.();
+  };
+
   return (
-    <div className="w-full max-w-lg mx-auto">
-      {/* Card Counter */}
-      <div className="text-center mb-4">
-        <span className="font-mono text-lg bg-foreground text-background px-4 py-2">
-          {index + 1} / {total}
-        </span>
-      </div>
-
-      {/* Flashcard */}
+    <div
+      className="perspective-1000 h-[400px] w-full max-w-xl mx-auto cursor-pointer group select-none"
+      onClick={() => setIsFlipped(!isFlipped)}
+    >
       <div
-        onClick={() => setIsFlipped(!isFlipped)}
-        className="relative cursor-pointer perspective-1000"
-        style={{ perspective: "1000px" }}
+        className={cn(
+          "relative w-full h-full transition-all duration-500 transform-style-3d",
+          isFlipped ? "rotate-y-180" : ""
+        )}
       >
-        <div
-          className={cn(
-            "relative w-full min-h-[300px] transition-all duration-500 preserve-3d",
-            isFlipped && "rotate-y-180"
-          )}
-          style={{
-            transformStyle: "preserve-3d",
-            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
-          }}
-        >
-          {/* Front */}
-          <div
-            className="absolute inset-0 w-full h-full backface-hidden border-4 border-foreground bg-card p-8 flex flex-col items-center justify-center"
-            style={{ backfaceVisibility: "hidden" }}
-          >
-            <div className="absolute top-4 right-4">
-              <span className="text-xs font-mono bg-accent px-2 py-1 border border-foreground">
-                DEUTSCH
-              </span>
+        {/* --- SISI DEPAN (JERMAN) --- */}
+        <div className="absolute inset-0 w-full h-full backface-hidden z-10">
+          <Card className="w-full h-full border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white flex flex-col items-center justify-center p-8 relative">
+            
+            {/* Tombol-tombol Aksi (HANYA MUNCUL DI DEPAN) */}
+            {/* Kita sembunyikan opacity-nya kalau dibalik biar ga jadi hantu */}
+            <div className={cn(
+              "absolute top-4 right-4 flex gap-2 z-20 transition-opacity duration-200",
+              isFlipped ? "opacity-0 pointer-events-none" : "opacity-100"
+            )}>
+              
+              {/* Tombol Audio */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className="rounded-full hover:bg-slate-100 w-10 h-10" 
+                onClick={playAudio}
+              >
+                <Volume2 className="w-6 h-6 text-blue-600" />
+              </Button>
+              
+              {/* Tombol Save / Bookmark */}
+              <Button 
+                size="icon" 
+                variant="ghost" 
+                className={cn(
+                  "rounded-full hover:bg-yellow-50 w-10 h-10 transition-colors", 
+                  isBookmarked ? "text-yellow-500 hover:bg-red-50 hover:text-red-500" : "text-slate-300 hover:text-yellow-500"
+                )} 
+                onClick={handleBookmarkClick}
+                title={isBookmarked ? "Hapus dari simpanan" : "Simpan kata"}
+              >
+                {isBookmarked ? <BookmarkCheck className="w-6 h-6 fill-current" /> : <Bookmark className="w-6 h-6" />}
+              </Button>
             </div>
-            <p className="text-4xl font-bold text-center">{vocabulary.german}</p>
-            <div className="mt-8 flex items-center gap-2 text-muted-foreground">
-              <RotateCw size={16} />
-              <span className="text-sm">Klik untuk membalik</span>
-            </div>
-          </div>
 
-          {/* Back */}
-          <div
-            className="absolute inset-0 w-full h-full backface-hidden border-4 border-foreground bg-foreground text-background p-8 flex flex-col items-center justify-center"
-            style={{
-              backfaceVisibility: "hidden",
-              transform: "rotateY(180deg)",
-            }}
-          >
-            <div className="absolute top-4 right-4">
-              <span className="text-xs font-mono bg-background text-foreground px-2 py-1 border border-background">
-                INDONESIA
-              </span>
-            </div>
-            <p className="text-3xl font-bold text-center mb-6">{vocabulary.indonesian}</p>
-            <div className="w-full border-t border-background/30 pt-6">
-              <p className="text-sm opacity-80 mb-2">Contoh kalimat:</p>
-              <p className="text-lg italic text-center">"{vocabulary.example}"</p>
-            </div>
-            <div className="mt-8 flex items-center gap-2 opacity-70">
-              <RotateCw size={16} />
-              <span className="text-sm">Klik untuk membalik</span>
-            </div>
-          </div>
+            <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">
+              Bahasa Jerman
+            </span>
+            <h2 className="text-4xl md:text-5xl font-black text-center text-foreground break-words max-w-full">
+              {vocabulary.german}
+            </h2>
+            <p className="absolute bottom-6 text-xs text-slate-400 font-bold uppercase tracking-widest animate-pulse">
+              Ketuk untuk membalik
+            </p>
+          </Card>
         </div>
+
+        {/* --- SISI BELAKANG (INDONESIA) --- */}
+        <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 z-10">
+          <Card className="w-full h-full border-4 border-blue-600 shadow-[8px_8px_0px_0px_#2563eb] bg-blue-600 text-white flex flex-col items-center justify-center p-8 relative">
+            
+            {/* BERSIH: Tidak ada tombol apapun di sini */}
+            
+
+            <span className="text-sm font-bold text-blue-200 uppercase tracking-widest mb-4 border-b-2 border-blue-400/30 pb-1">
+              Artinya
+            </span>
+            <h2 className="text-3xl md:text-4xl font-bold text-center break-words leading-tight">
+              {vocabulary.indonesian}
+            </h2>
+          </Card>
+        </div>
+
       </div>
     </div>
   );

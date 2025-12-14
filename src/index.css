@@ -159,3 +159,24 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Container Kartu */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+/* Wadah Pembungkus (Inner) */
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+/* Sembunyikan bagian belakang kartu saat dibalik */
+.backface-hidden {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Rotasi untuk sisi belakang */
+.rotate-y-180 {
+  transform: rotateY(180deg);
+}
