@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { useDictionary } from "@/hooks/useDictionary"; 
 // Import Card component untuk tampilan List
 import { Card, CardContent } from "@/components/ui/card";
+import { useActivityLog } from "@/hooks/useActivityLog";
 
 const FlashcardPage = () => {
   const [selectedLevel, setSelectedLevel] = useState<string>("A1");
@@ -21,6 +22,8 @@ const FlashcardPage = () => {
 
   // Panggil Hook Dictionary (Ambil saveWord, isSaved, words, dan removeWord)
   const { saveWord, isSaved, words, removeWord } = useDictionary();
+
+  const { logActivity } = useActivityLog();
 
   // Filter kata disimpan per Level
   const savedWordsForLevel = words.filter(w => w.source === `Flashcard ${selectedLevel}`);
@@ -87,8 +90,11 @@ const FlashcardPage = () => {
           removeWord(wordToDelete.id);
         }
       } else {
-        // JIKA BELUM -> SIMPAN
-        saveWord(currentCard.german, currentCard.indonesian, `Flashcard ${selectedLevel}`);
+         // Logika simpan
+         saveWord(currentCard.german, currentCard.indonesian, `Flashcard ${selectedLevel}`);
+         
+         // 3. TAMBAHKAN LOG DI SINI
+         logActivity("word", `Menyimpan flashcard "${currentCard.german}" (${selectedLevel})`);
       }
     }
   };

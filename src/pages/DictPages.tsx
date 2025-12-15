@@ -3,13 +3,16 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search, Book, Volume2, Loader2, Save, Sparkles, Languages, Quote, List, ExternalLink } from "lucide-react";
+// Tambahkan import icon BookMarked, Trash2, X
+import { Search, Book, Volume2, Loader2, Save, Sparkles, Quote, List, ExternalLink, BookMarked, Trash2, X } from "lucide-react";
 import { useDictionary } from "@/hooks/useDictionary";
 import { generateDeclension, determineArticle, guessGender } from "@/utils/grammarGenerator";
 import { useDebounce } from "@/hooks/useDebounce";
-// Import fungsi suggestion baru
 import { fetchWiktionaryData, getWiktionarySuggestions, WikiData } from "@/services/wiktionary"; 
 import { toast } from "@/hooks/use-toast";
+// Import Sheet component (Pastikan sudah ada atau install shadcn sheet)
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useActivityLog } from "@/hooks/useActivityLog";
 
 interface DictionaryData extends WikiData {
   germanWord: string;
@@ -19,10 +22,11 @@ interface DictionaryData extends WikiData {
 }
 
 const DictionaryPage = () => {
-  const { saveWord } = useDictionary();
+  // Ambil juga 'words' dan 'removeWord' dari hook
+  const { saveWord, words, removeWord } = useDictionary();
   
   const [query, setQuery] = useState("");
-  const debouncedQuery = useDebounce(query, 300); // Delay ngetik
+  const debouncedQuery = useDebounce(query, 300);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -30,25 +34,23 @@ const DictionaryPage = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<DictionaryData | null>(null);
 
+  // Filter: Hanya tampilkan kata yang disimpan dari 'Wiktionary Pro' (agar tidak campur aduk dengan Flashcard)
+  const savedDictionaryWords = words.filter(w => w.source === "Wiktionary Pro");
+
   // --- 1. LIVE SUGGESTION DARI WIKTIONARY ---
   useEffect(() => {
     const getSuggestions = async () => {
-      // Hanya cari saran jika query minimal 2 huruf
       if (debouncedQuery.trim().length < 2) {
         setSuggestions([]);
         return;
       }
-      
-      // Panggil API OpenSearch Wiktionary
       const list = await getWiktionarySuggestions(debouncedQuery);
       setSuggestions(list);
       if (list.length > 0) setShowSuggestions(true);
     };
-
     getSuggestions();
   }, [debouncedQuery]);
 
-  // Tutup dropdown jika klik di luar
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
@@ -59,19 +61,16 @@ const DictionaryPage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- 2. EKSEKUSI PENCARIAN (SAAT KLIK SUGGESTION) ---
+  // --- 2. EKSEKUSI PENCARIAN ---
   const performSearch = async (selectedWord: string) => {
-    setQuery(selectedWord); // Update input box jadi kata yg dipilih
-    setShowSuggestions(false); // Tutup dropdown
+    setQuery(selectedWord);
+    setShowSuggestions(false);
     setLoading(true);
     setData(null);
 
     try {
-      // A. Ambil Data Detail dari Wiktionary
-      // Karena user memilih dari list, ejaan & huruf besar/kecil PASTI BENAR.
       const wikiData = await fetchWiktionaryData(selectedWord);
 
-      // B. Terjemahan Indo (MyMemory)
       let translation = "Terjemahan tidak ditemukan";
       try {
         const resTrans = await fetch(`https://api.mymemory.translated.net/get?q=${selectedWord}&langpair=de|id`);
@@ -79,9 +78,8 @@ const DictionaryPage = () => {
         if (jsonTrans.responseData.translatedText) {
           translation = jsonTrans.responseData.translatedText;
         }
-      } catch (e) { /* Silent fail */ }
+      } catch (e) { }
 
-      // C. Grammar
       const detectedGender = guessGender(selectedWord);
       const grammarTables = detectedGender ? generateDeclension(selectedWord, detectedGender) : null;
 
@@ -102,7 +100,7 @@ const DictionaryPage = () => {
     } catch (error) {
       toast({
         title: "Tidak Ditemukan 😔",
-        description: `Maaf, data untuk "${selectedWord}" belum lengkap di database kami.`,
+        description: `Maaf, data untuk "${selectedWord}" belum lengkap.`,
         variant: "destructive"
       });
     } finally {
@@ -110,17 +108,21 @@ const DictionaryPage = () => {
     }
   };
 
+  const { logActivity } = useActivityLog();
   const handleSave = () => {
     if (data) {
       const article = data.gender ? determineArticle(data.gender) : "";
       const fullWord = article ? `${article} ${data.germanWord}` : data.germanWord;
       saveWord(fullWord, data.translation, "Wiktionary Pro");
+      logActivity("word", `Menyimpan kata "${data.germanWord}" dari Kamus`);
+      toast({ title: "Disimpan!", description: `Kata "${fullWord}" masuk ke koleksi.` });
     }
   };
 
-  const playAudio = () => {
-    if (data?.germanWord) {
-      const u = new SpeechSynthesisUtterance(data.germanWord);
+  const playAudio = (text?: string) => {
+    const wordToSpeak = text || data?.germanWord;
+    if (wordToSpeak) {
+      const u = new SpeechSynthesisUtterance(wordToSpeak);
       u.lang = "de-DE";
       window.speechSynthesis.speak(u);
     }
@@ -139,8 +141,61 @@ const DictionaryPage = () => {
       {/* HEADER & SEARCH */}
       <div className="bg-blue-950 text-white py-10 border-b-4 border-foreground relative">
         <div className="container mx-auto px-4 text-center">
+            
+            {/* TOMBOL LIHAT KOLEKSI (POJOK KANAN ATAS) */}
+            <div className="absolute top-4 right-4">
+                <Sheet>
+                    <SheetTrigger asChild>
+                        <Button variant="outline" className="bg-transparent border-white/20 text-white hover:bg-white/10 hover:text-white font-bold">
+                            <BookMarked className="w-4 h-4 mr-2" />
+                            Koleksi
+                            <span className="ml-2 bg-yellow-400 text-black px-2 py-0.5 rounded-full text-xs font-black">
+                                {savedDictionaryWords.length}
+                            </span>
+                        </Button>
+                    </SheetTrigger>
+                    <SheetContent className="bg-slate-50 w-full sm:w-[400px] overflow-y-auto">
+                        <SheetHeader className="mb-6 border-b pb-4">
+                            <SheetTitle className="text-2xl font-black uppercase flex items-center gap-2">
+                                <BookMarked className="w-6 h-6 text-blue-600"/> Kamus Saya
+                            </SheetTitle>
+                        </SheetHeader>
+                        
+                        {savedDictionaryWords.length > 0 ? (
+                            <div className="space-y-3">
+                                {savedDictionaryWords.map((item) => (
+                                    <div key={item.id} className="bg-white p-3 rounded-xl border-2 border-slate-200 shadow-sm flex justify-between items-center group hover:border-blue-400 transition-colors">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2">
+                                                <p className="font-black text-slate-800 text-lg">{item.german}</p>
+                                                <button onClick={() => playAudio(item.german)} className="text-slate-300 hover:text-blue-500"><Volume2 className="w-4 h-4"/></button>
+                                            </div>
+                                            <p className="text-sm text-slate-500 italic font-medium">{item.indo}</p>
+                                        </div>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full"
+                                            onClick={() => removeWord(item.id)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-20 opacity-50">
+                                <BookMarked className="w-16 h-16 mx-auto mb-4 text-slate-300"/>
+                                <p className="font-bold text-slate-400">Belum ada kata disimpan.</p>
+                                <p className="text-xs text-slate-400 mt-1">Cari kata lalu tekan tombol Save.</p>
+                            </div>
+                        )}
+                    </SheetContent>
+                </Sheet>
+            </div>
+
           <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight mb-6 flex items-center justify-center gap-3">
-            <Book className="w-8 h-8 text-yellow-400" /> Wörterbuch Pro
+            <Book className="w-8 h-8 text-yellow-400" /> Wörterbuch
           </h1>
           
           {/* SEARCH CONTAINER */}
@@ -155,19 +210,19 @@ const DictionaryPage = () => {
               <Button 
                 size="icon" 
                 className="absolute right-2 top-2 rounded-lg w-10 h-10 bg-blue-600 hover:bg-blue-700"
-                onClick={() => performSearch(query)} // Fallback kalau user langsung enter
+                onClick={() => performSearch(query)} 
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
               </Button>
             </div>
 
-            {/* SUGGESTION DROPDOWN (INTI FITUR) */}
+            {/* SUGGESTION DROPDOWN */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-white border-4 border-foreground rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-100 text-left max-h-80 overflow-y-auto">
                 {suggestions.map((sug, idx) => (
                   <button
                     key={idx}
-                    onClick={() => performSearch(sug)} // KLIK -> CARI
+                    onClick={() => performSearch(sug)} 
                     className="w-full text-left px-6 py-3 hover:bg-blue-50 text-slate-800 font-bold border-b last:border-b-0 border-slate-100 flex items-center gap-2 group"
                   >
                     <Search className="w-4 h-4 text-slate-300 group-hover:text-blue-500" />
@@ -203,7 +258,7 @@ const DictionaryPage = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 grid grid-cols-2 gap-2 bg-slate-50">
-                  <Button variant="outline" className="w-full border-2 border-slate-300 font-bold hover:bg-white" onClick={playAudio}>
+                  <Button variant="outline" className="w-full border-2 border-slate-300 font-bold hover:bg-white" onClick={() => playAudio()}>
                     <Volume2 className="w-4 h-4 mr-2" /> Audio
                   </Button>
                   <Button className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-black border-2 border-black" onClick={handleSave}>
@@ -279,7 +334,7 @@ const DictionaryPage = () => {
                         {data.synonyms.map((syn, i) => (
                           <button 
                             key={i} 
-                            onClick={() => performSearch(syn)} // Recursive search
+                            onClick={() => performSearch(syn)} 
                             className="px-3 py-1.5 bg-white border-2 border-slate-200 hover:border-purple-500 hover:text-purple-700 rounded-full font-bold text-slate-600 transition-all text-sm shadow-sm"
                           >
                             {syn}
@@ -308,7 +363,7 @@ const DictionaryPage = () => {
                         </table>
                       </div>
                     ) : (
-                      <p className="text-slate-400 italic">Data grammar tidak tersedia (mungkin bukan kata benda).</p>
+                      <p className="text-slate-400 italic">Data grammar tidak tersedia.</p>
                     )}
                   </TabsContent>
 

@@ -1,5 +1,10 @@
-import { Link, useLocation } from "react-router-dom";
-import { BookOpen, Home, BarChart3, Menu, X, ChevronDown, Library, Map, ClipboardCheck, PenTool, Book, Trophy, CreditCard } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom"; 
+import { 
+  BookOpen, Home, BarChart3, Menu, X, ChevronDown, Library, 
+  Map as MapIcon, 
+  ClipboardCheck, PenTool, Book, Trophy, CreditCard, 
+  User, LogOut, LayoutDashboard // Tambah icon LayoutDashboard
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -7,15 +12,28 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel 
 } from "@/components/ui/dropdown-menu";
+
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/login");
+  };
 
   const levels = ["A1", "A2", "B1", "B2"];
 
-  // --- LOGIKA: SEMBUNYIKAN HEADER DI HALAMAN SIMULASI ---
   if (location.pathname.includes("/simulation")) {
     return null;
   }
@@ -34,7 +52,6 @@ const Header = () => {
           {/* DESKTOP NAVIGATION */}
           <nav className="hidden xl:flex items-center gap-2 lg:gap-4">
             
-            {/* 1. HOME */}
             <Link
               to="/"
               className={cn(
@@ -105,7 +122,7 @@ const Header = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* 5. DROPDOWN LATIHAN (FLASHCARD, DICTIONARY, QUIZ) - UPDATED! */}
+            {/* 5. DROPDOWN LAINNYA */}
             <DropdownMenu>
               <DropdownMenuTrigger className={cn(
                 "flex items-center gap-2 px-3 py-2 font-medium transition-all border-2 border-transparent hover:border-foreground rounded-md outline-none focus:border-foreground data-[state=open]:border-foreground group",
@@ -118,14 +135,12 @@ const Header = () => {
                 <ChevronDown size={16} className="group-data-[state=open]:rotate-180 transition-transform" />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 border-2 border-foreground bg-background shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none mt-2">
-                {/* Flashcard */}
                 <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer">
                   <Link to="/flashcard" className="w-full font-bold py-2 flex items-center gap-2">
                     <CreditCard size={16} /> Flashcard
                   </Link>
                 </DropdownMenuItem>
                 
-                {/* Kamus */}
                 <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer">
                   <Link to="/dictionary" className="w-full font-bold py-2 flex items-center gap-2">
                     <Book size={16} /> Kamus Saya
@@ -134,7 +149,6 @@ const Header = () => {
 
                 <div className="h-[2px] bg-foreground/20 w-full my-1"></div>
                 
-                {/* Quiz */}
                 <div className="px-2 py-1 text-[10px] font-black uppercase text-muted-foreground tracking-widest">
                   Evaluasi Quiz
                 </div>
@@ -153,15 +167,22 @@ const Header = () => {
             <DropdownMenu>
               <DropdownMenuTrigger className={cn(
                 "flex items-center gap-2 px-3 py-2 font-medium transition-all border-2 rounded-md outline-none focus:border-foreground data-[state=open]:border-foreground group",
-                location.pathname.includes("/progress") || location.pathname.includes("/planner")
+                location.pathname.includes("/progress") || location.pathname.includes("/planner") || location.pathname.includes("/mein-weg")
                   ? "bg-foreground text-background border-foreground"
                   : "bg-background text-foreground border-transparent hover:border-foreground"
               )}>
-                <Map size={18} />
+                <MapIcon size={18} />
                 <span className="hidden lg:inline">Mein Weg</span>
                 <ChevronDown size={16} className="group-data-[state=open]:rotate-180 transition-transform" />
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56 border-2 border-foreground bg-background shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none mt-2">
+                
+                <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer p-0">
+                  <Link to="/mein-weg" className="w-full font-bold py-3 px-2 flex items-center gap-2 bg-blue-50 text-blue-700">
+                    <MapIcon size={18} /> Program & Progress
+                  </Link>
+                </DropdownMenuItem>
+
                 <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer p-0">
                   <Link to="/progress" className="w-full font-bold py-3 px-2 flex items-center gap-2">
                     <BarChart3 size={18} /> Statistik
@@ -170,7 +191,7 @@ const Header = () => {
                 <div className="h-[2px] bg-foreground w-full my-0"></div>
                 <DropdownMenuItem asChild className="focus:bg-accent focus:text-foreground cursor-pointer p-0">
                   <Link to="/planner" className="w-full font-bold py-3 px-2 flex items-center gap-2">
-                    <Map size={18} /> Study Planner
+                    <MapIcon size={18} /> Study Planner
                   </Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -178,13 +199,69 @@ const Header = () => {
 
           </nav>
 
-          {/* MOBILE MENU BUTTON */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="xl:hidden p-2 border-2 border-foreground rounded-md active:bg-accent active:text-accent-foreground transition-colors"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          <div className="flex items-center gap-2">
+            
+            {/* USER LOGIN / PROFILE */}
+            <div className="hidden xl:block">
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-10 w-10 rounded-full border-2 border-foreground p-0 hover:bg-slate-100 transition-transform active:scale-95">
+                      <Avatar className="h-full w-full">
+                        <AvatarImage src={user.user_metadata.avatar_url} />
+                        <AvatarFallback className="font-bold bg-yellow-400 text-black">
+                           {user.email?.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 border-2 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] mt-2">
+                    
+                    {/* BAGIAN EMAIL HEADER */}
+                    <DropdownMenuLabel>
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-medium leading-none truncate">{user.user_metadata.full_name || "User"}</p>
+                        <p className="text-xs leading-none text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+
+                    {/* LINK KE DASHBOARD */}
+                    <DropdownMenuItem asChild className="cursor-pointer font-bold">
+                        <Link to="/dashboard" className="flex items-center w-full">
+                            <LayoutDashboard className="mr-2 h-4 w-4" /> Dashboard Profile
+                        </Link>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator />
+                    
+                    {/* LOGOUT */}
+                    <DropdownMenuItem className="font-bold text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50" onClick={handleSignOut}>
+                       <LogOut className="mr-2 h-4 w-4" /> Keluar
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="flex gap-2">
+                  <Button asChild variant="ghost" size="sm" className="font-bold">
+                    <Link to="/login">Masuk</Link>
+                  </Button>
+                  <Button asChild className="font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-[2px] transition-all">
+                    <Link to="/register">Daftar</Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* MOBILE MENU BUTTON */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="xl:hidden p-2 border-2 border-foreground rounded-md active:bg-accent active:text-accent-foreground transition-colors"
+            >
+              {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+
+          </div>
         </div>
 
         {/* MOBILE NAVIGATION CONTENT */}
@@ -192,6 +269,17 @@ const Header = () => {
           <nav className="xl:hidden py-4 border-t-2 border-foreground animate-in slide-in-from-top-2 bg-background overflow-y-auto max-h-[calc(100vh-4rem)]">
             <div className="flex flex-col gap-4 pb-8">
               
+              {/* DASHBOARD LINK DI MOBILE (PALING ATAS) */}
+              {user && (
+                 <Link
+                    to="/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 px-4 py-3 font-bold border-2 border-blue-600 bg-blue-50 text-blue-700 mx-2 rounded-md transition-colors"
+                  >
+                    <LayoutDashboard size={20} /> Dashboard Profile
+                  </Link>
+              )}
+
               <Link
                 to="/"
                 onClick={() => setMobileMenuOpen(false)}
@@ -258,7 +346,7 @@ const Header = () => {
                 </div>
               </div>
 
-              {/* Group Latihan (UPDATED) */}
+              {/* Group Latihan */}
               <div className="px-2 mt-2">
                 <div className="px-2 pb-2 text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <PenTool size={14} /> Alat & Latihan
@@ -300,8 +388,19 @@ const Header = () => {
               {/* Group Mein Weg */}
               <div className="px-2 mt-2">
                  <div className="px-2 pb-2 text-xs font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <Map size={14} /> Mein Weg
+                  <MapIcon size={14} /> Mein Weg
                 </div>
+                
+                <div className="px-2 mb-2">
+                    <Link
+                    to="/mein-weg"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center justify-center gap-2 w-full text-center py-3 border-2 border-foreground font-bold bg-blue-600 text-white active:bg-blue-700 transition-colors rounded-md shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
+                    >
+                    <MapIcon size={18} /> Program & Progress
+                    </Link>
+                </div>
+
                 <div className="grid grid-cols-2 gap-2 px-2">
                   <Link
                     to="/progress"
@@ -319,6 +418,21 @@ const Header = () => {
                   </Link>
                 </div>
               </div>
+
+              {/* LOGOUT DI MOBILE */}
+              {user ? (
+                <div className="px-4 mt-4">
+                  <Button variant="destructive" className="w-full font-bold border-2 border-black" onClick={handleSignOut}>
+                    Keluar
+                  </Button>
+                </div>
+              ) : (
+                <div className="px-4 mt-4">
+                  <Button asChild className="w-full font-bold border-2 border-black">
+                    <Link to="/login">Masuk</Link>
+                  </Button>
+                </div>
+              )}
 
             </div>
           </nav>

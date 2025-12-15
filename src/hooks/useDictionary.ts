@@ -1,78 +1,79 @@
 import { useState, useEffect } from "react";
-import { toast } from "@/hooks/use-toast"; // Pastikan path ini sesuai dengan hook toast kamu
+import { toast } from "@/components/ui/use-toast"; // Pastikan path ini sesuai dengan projectmu (bisa @/hooks/use-toast)
 
-export type SavedWord = {
+export interface SavedWord {
   id: number;
   german: string;
   indo: string;
-  source?: string; // Asal kata (Flashcard / Manual)
-  addedAt: string;
-};
+  source?: string;
+  timestamp: number;
+}
 
 export const useDictionary = () => {
+  // PERBAIKAN: Inisialisasi dengan Array Kosong [], bukan data dummy
   const [words, setWords] = useState<SavedWord[]>([]);
 
-  // 1. Load data dari LocalStorage saat aplikasi mulai
+  // 1. Load data dari LocalStorage saat pertama kali dibuka
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("mein_woerterbuch");
-      if (saved) {
-        try {
-          setWords(JSON.parse(saved));
-        } catch (e) {
-          console.error("Gagal load dictionary", e);
-        }
+    const saved = localStorage.getItem("my_dictionary");
+    if (saved) {
+      try {
+        setWords(JSON.parse(saved));
+      } catch (error) {
+        console.error("Gagal load data kamus:", error);
+        setWords([]);
       }
     }
   }, []);
 
-  // 2. Cek apakah kata sudah ada (Case insensitive)
-  const isSaved = (germanText: string) => {
-    return words.some((w) => w.german.toLowerCase() === germanText.toLowerCase());
-  };
+  // 2. Setiap kali 'words' berubah, simpan otomatis ke LocalStorage
+  useEffect(() => {
+    // Cek panjang array agar tidak menimpa data yang belum terload
+    // (Tapi karena inisialisasi [], logic ini aman untuk LocalStorage sederhana)
+    localStorage.setItem("my_dictionary", JSON.stringify(words));
+  }, [words]);
 
-  // 3. Fungsi Simpan Kata
+  // Fungsi Simpan Kata
   const saveWord = (german: string, indo: string, source: string = "Manual") => {
-    if (!german.trim() || !indo.trim()) return;
-
-    if (isSaved(german)) {
+    // Cek duplikat (Case insensitive)
+    const isExist = words.some((w) => w.german.toLowerCase() === german.toLowerCase());
+    
+    if (isExist) {
       toast({
-        title: "Sudah Ada! 😅",
-        description: `Kata "${german}" sudah tersimpan di kamus.`,
-        variant: "default",
+        title: "Sudah tersimpan",
+        description: `Kata "${german}" sudah ada di koleksi.`,
       });
       return;
     }
 
     const newWord: SavedWord = {
-      id: Date.now(),
-      german: german.trim(),
-      indo: indo.trim(),
+      id: Date.now(), // Gunakan timestamp sebagai ID unik
+      german,
+      indo,
       source,
-      addedAt: new Date().toLocaleDateString("id-ID"),
+      timestamp: Date.now(),
     };
 
-    const updatedList = [newWord, ...words];
-    setWords(updatedList);
-    localStorage.setItem("mein_woerterbuch", JSON.stringify(updatedList));
+    setWords((prev) => [newWord, ...prev]); // Tambah ke paling atas
     
     toast({
-      title: "Tersimpan! 📖",
-      description: `"${german}" masuk ke Kamus Saya.`,
-      className: "bg-green-500 text-white border-2 border-black font-bold",
+      title: "Tersimpan!",
+      description: `"${german}" berhasil ditambahkan ke koleksi.`,
     });
   };
 
-  // 4. Fungsi Hapus Kata
+  // Fungsi Hapus Kata
   const removeWord = (id: number) => {
-    const updatedList = words.filter((w) => w.id !== id);
-    setWords(updatedList);
-    localStorage.setItem("mein_woerterbuch", JSON.stringify(updatedList));
-    
+    setWords((prev) => prev.filter((w) => w.id !== id));
     toast({
-      title: "Dihapus 🗑️",
-      description: "Kata telah dihapus dari kamus.",
+      title: "Dihapus",
+      description: "Kata telah dihapus dari koleksi.",
     });
+  };
+
+  // Cek status apakah kata sudah disimpan (untuk UI tombol bookmark)
+  const isSaved = (german: string) => {
+    return words.some((w) => w.german.toLowerCase() === german.toLowerCase());
   };
 
   return { words, saveWord, removeWord, isSaved };
