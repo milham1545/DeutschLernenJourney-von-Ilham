@@ -26,6 +26,8 @@ import LoginPage from "@/pages/LoginPage";
 import RegisterPage from "@/pages/RegisterPage";
 import DashboardPage from "@/pages/DashboardPage";
 
+import ScrollToTop from "@/components/ScrollToTop";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -34,6 +36,8 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        
+        <ScrollToTop />
         
         {/* 3. BUNGKUS DENGAN AUTHPROVIDER DI SINI */}
         <AuthProvider>

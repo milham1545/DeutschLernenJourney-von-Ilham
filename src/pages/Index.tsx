@@ -15,7 +15,7 @@ const Index = () => {
             </div>
             <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
               DEUTSCH
-              <span className="block bg-foreground text-background px-4 py-2 mt-2 inline-block">
+              <span className="bg-foreground text-background px-4 py-2 mt-2 inline-block">
                 LERNEN
               </span>
             </h1>
@@ -24,7 +24,7 @@ const Index = () => {
               flashcard interaktif, dan pelacakan progress otomatis.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/level/A1">
+              <Link to="/material/A1">
                 <Button size="lg" className="w-full sm:w-auto text-lg px-8">
                   Mulai Belajar A1
                   <ArrowRight className="ml-2" size={20} />
@@ -109,7 +109,7 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-bold mb-2">Pelacakan Progress</h3>
               <p className="text-muted-foreground">
-                Progress disimpan otomatis di browser. Tandai selesai tiap sub-bab dan pantau kemajuanmu.
+                Progress tersimpan dalam akunmu. Tandai selesai tiap sub-bab dan pantau kemajuanmu.
               </p>
             </div>
           </div>
@@ -124,11 +124,11 @@ const Index = () => {
             Siap Memulai Perjalanan?
           </h2>
           <p className="text-lg opacity-80 mb-8 max-w-xl mx-auto">
-            Tidak perlu akun. Progress tersimpan otomatis. Mulai belajar sekarang!
+            Buat akun. Progress tersimpan otomatis. Mulai belajar sekarang dan ketahui program yang cocok denganmu!
           </p>
-          <Link to="/level/A1">
+          <Link to="/mein-weg">
             <Button size="lg" variant="secondary" className="text-lg px-8">
-              Mulai dari A1
+              Ketahui Programmu
               <ArrowRight className="ml-2" size={20} />
             </Button>
           </Link>
@@ -138,7 +138,7 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t-4 border-foreground py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p className="font-mono">© 2024 DeutschLernen • Belajar Bahasa Jerman Online</p>
+          <p className="font-mono">© 2025 DeutschLernen • Belajar Bahasa Jerman Online</p>
         </div>
       </footer>
     </div>
