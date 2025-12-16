@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Volume2, Bookmark, BookmarkCheck } from "lucide-react";
+import { Volume2, Bookmark, BookmarkCheck, Sparkles } from "lucide-react"; // Tambah import Sparkles
 import { Vocabulary } from "@/data/lessons";
 import { cn } from "@/lib/utils";
 
@@ -16,11 +16,22 @@ interface FlashCardProps {
 const FlashCard = ({ vocabulary, index, total, isBookmarked, onBookmark }: FlashCardProps) => {
   const [isFlipped, setIsFlipped] = useState(false);
 
+  // Fungsi audio untuk kata Jerman (Depan)
   const playAudio = (e: React.MouseEvent) => {
     e.stopPropagation();
     const utterance = new SpeechSynthesisUtterance(vocabulary.german);
     utterance.lang = "de-DE";
     window.speechSynthesis.speak(utterance);
+  };
+
+  // Fungsi audio untuk contoh kalimat (Belakang)
+  const playExampleAudio = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (vocabulary.example) {
+        const utterance = new SpeechSynthesisUtterance(vocabulary.example);
+        utterance.lang = "de-DE";
+        window.speechSynthesis.speak(utterance);
+    }
   };
 
   const handleBookmarkClick = (e: React.MouseEvent) => {
@@ -30,7 +41,7 @@ const FlashCard = ({ vocabulary, index, total, isBookmarked, onBookmark }: Flash
 
   return (
     <div
-      className="perspective-1000 h-[400px] w-full max-w-xl mx-auto cursor-pointer group select-none"
+      className="perspective-1000 h-[450px] w-full max-w-xl mx-auto cursor-pointer group select-none"
       onClick={() => setIsFlipped(!isFlipped)}
     >
       <div
@@ -39,12 +50,11 @@ const FlashCard = ({ vocabulary, index, total, isBookmarked, onBookmark }: Flash
           isFlipped ? "rotate-y-180" : ""
         )}
       >
-        {/* --- SISI DEPAN (JERMAN) --- */}
+        {/* --- SISI DEPAN (JERMAN - Tetap Putih) --- */}
         <div className="absolute inset-0 w-full h-full backface-hidden z-10">
-          <Card className="w-full h-full border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white flex flex-col items-center justify-center p-8 relative">
+          <Card className="w-full h-full border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white flex flex-col items-center justify-center p-8 relative overflow-hidden">
             
             {/* Tombol-tombol Aksi (HANYA MUNCUL DI DEPAN) */}
-            {/* Kita sembunyikan opacity-nya kalau dibalik biar ga jadi hantu */}
             <div className={cn(
               "absolute top-4 right-4 flex gap-2 z-20 transition-opacity duration-200",
               isFlipped ? "opacity-0 pointer-events-none" : "opacity-100"
@@ -78,7 +88,7 @@ const FlashCard = ({ vocabulary, index, total, isBookmarked, onBookmark }: Flash
             <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest mb-4">
               Bahasa Jerman
             </span>
-            <h2 className="text-4xl md:text-5xl font-black text-center text-foreground break-words max-w-full">
+            <h2 className="text-4xl md:text-5xl font-black text-center text-foreground break-words max-w-full relative z-10">
               {vocabulary.german}
             </h2>
             <p className="absolute bottom-6 text-xs text-slate-400 font-bold uppercase tracking-widest animate-pulse">
@@ -87,19 +97,48 @@ const FlashCard = ({ vocabulary, index, total, isBookmarked, onBookmark }: Flash
           </Card>
         </div>
 
-        {/* --- SISI BELAKANG (INDONESIA) --- */}
+        {/* --- SISI BELAKANG (INDONESIA + CONTOH - Aesthetic Cream) --- */}
         <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180 z-10">
-          <Card className="w-full h-full border-4 border-blue-600 shadow-[8px_8px_0px_0px_#2563eb] bg-blue-600 text-white flex flex-col items-center justify-center p-8 relative">
+          {/* Ubah background jadi amber-50 (krem) dan border/shadow tetap hitam */}
+          <Card className="w-full h-full border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-amber-50 text-foreground flex flex-col items-center justify-center p-6 relative overflow-hidden">
             
-            {/* BERSIH: Tidak ada tombol apapun di sini */}
-            
+            {/* IKON AESTHETIC LATAR BELAKANG */}
+            {/* Ikon Sparkles besar, miring, dan samar di pojok */}
+            <Sparkles className="absolute -top-6 -right-6 h-32 w-32 text-amber-200/50 rotate-12 pointer-events-none" />
 
-            <span className="text-sm font-bold text-blue-200 uppercase tracking-widest mb-4 border-b-2 border-blue-400/30 pb-1">
-              Artinya
-            </span>
-            <h2 className="text-3xl md:text-4xl font-bold text-center break-words leading-tight">
-              {vocabulary.indonesian}
-            </h2>
+            {/* Bagian Arti */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full relative z-10">
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-2 border-b border-amber-700/30 pb-1">
+                Artinya
+                </span>
+                <h2 className="text-3xl md:text-4xl font-black text-center break-words leading-tight mb-4 text-foreground">
+                {vocabulary.indonesian}
+                </h2>
+            </div>
+
+            {/* Bagian Separator Garis Putus-putus (Warna disesuaikan) */}
+            <div className="w-full border-t-2 border-dashed border-amber-800/30 my-2 relative z-10"></div>
+
+            {/* Bagian Contoh Kalimat */}
+            <div className="flex-1 flex flex-col items-center justify-center w-full relative z-10">
+                <span className="text-xs font-bold text-amber-700 uppercase tracking-widest mb-2">
+                    Contoh Penggunaan
+                </span>
+                
+                {vocabulary.example ? (
+                    // Hover effect diubah jadi warna amber/oranye hangat
+                    <div className="text-center group-example relative cursor-pointer px-4 py-3 rounded-xl hover:bg-amber-100/80 transition-colors duration-300 border-2 border-transparent hover:border-amber-200" onClick={playExampleAudio}>
+                        <p className="text-lg italic font-medium text-amber-950 leading-relaxed">
+                            "{vocabulary.example}"
+                        </p>
+                        {/* Ikon audio kecil */}
+                        <Volume2 size={14} className="inline-block mt-2 text-amber-700/50" />
+                    </div>
+                ) : (
+                    <p className="text-sm text-amber-700/60 italic">Tidak ada contoh kalimat.</p>
+                )}
+            </div>
+
           </Card>
         </div>
 

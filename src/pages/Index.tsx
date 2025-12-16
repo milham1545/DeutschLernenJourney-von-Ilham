@@ -100,7 +100,7 @@ const Index = () => {
               </div>
               <h3 className="text-xl font-bold mb-2">Flashcard Interaktif</h3>
               <p className="text-muted-foreground">
-                Kartu flash dengan kata Jerman di depan dan terjemahan + contoh di belakang untuk hafalan efektif.
+                Flashcard dengan kata Jerman di depan dan terjemahan + contoh di belakang untuk hafalan efektif.
               </p>
             </div>
             <div className="border-4 border-foreground p-6 bg-card">
@@ -126,7 +126,7 @@ const Index = () => {
           <p className="text-lg opacity-80 mb-8 max-w-xl mx-auto">
             Buat akun. Progress tersimpan otomatis. Mulai belajar sekarang dan ketahui program yang cocok denganmu!
           </p>
-          <Link to="/mein-weg">
+          <Link to="/login">
             <Button size="lg" variant="secondary" className="text-lg px-8">
               Ketahui Programmu
               <ArrowRight className="ml-2" size={20} />
