@@ -433,16 +433,6 @@ const Header = () => {
                   </Button>
                 </div>
               )}
-
-              {/* Boleh juga tambahin di tombol DAFTAR biar sekalian */}
-              {/* Tambahin margin top biar rapi dikit */}
-              <div className="mt-2"> 
-                <Button asChild className="w-full font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-[2px] transition-all">
-                    <Link to="/register" onClick={() => setMobileMenuOpen(false)}>
-                      Daftar
-                    </Link>
-                </Button>
-              </div>
             </div>
           </nav>
         )}
