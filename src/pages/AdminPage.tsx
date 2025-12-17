@@ -4,68 +4,109 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+// --- PERBAIKAN DISINI: Menambahkan semua icon yang dipakai ---
 import { 
-  Loader2, UploadCloud, Database, ShieldAlert, CheckCircle, 
-  FileJson, LogOut, Plus, Trash2, Edit2, Search, Layers, BookOpen, Crown 
+  Loader2, UploadCloud, ShieldAlert, FileJson, LogOut, Plus, Trash2, Edit2, Search, 
+  Layers, BookOpen, Crown, BookText, FileCode, Sparkles, LayoutDashboard, Database,
+  Menu, X, Home, ArrowLeft, UserCircle
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { cn } from "@/lib/utils";
 
 // Tipe Data
 type Level = { id: string; title: string; description: string };
 type Lesson = { id: string; title: string; slug: string; level_id: string; order_index: number };
 type Vocab = { id: string; german: string; indonesian: string; example: string; lesson_id: string };
+type CourseMaterialDB = { id: string; title: string; section_id: string; level_id: string; order_index: number; content: any };
 
 const AdminPage = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // State
+  // State Global
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingRole, setIsCheckingRole] = useState(true);
-  
+  const [activeMenu, setActiveMenu] = useState<"dashboard" | "vocab" | "material" | "import">("dashboard");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [fullName, setFullName] = useState("Admin");
+
+  // Data State
   const [levels, setLevels] = useState<Level[]>([]);
   const [lessons, setLessons] = useState<Lesson[]>([]);
   const [vocabs, setVocabs] = useState<Vocab[]>([]);
+  const [materials, setMaterials] = useState<CourseMaterialDB[]>([]);
   
+  // Stats
+  const [stats, setStats] = useState({ levels: 0, lessons: 0, vocabs: 0, materials: 0 });
+
+  // Selection State
   const [selectedLevelId, setSelectedLevelId] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   
+  // Import State
+  const [importType, setImportType] = useState<"vocab" | "material">("vocab");
+  const [jsonInput, setJsonInput] = useState("");
+
+  // UI State
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-
-  const [jsonInput, setJsonInput] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formType, setFormType] = useState<"level" | "lesson" | "vocab">("vocab");
   
+  // Form Inputs
   const [formData, setFormData] = useState({
     id: "", title: "", description: "", slug: "", order_index: 0,
     german: "", indonesian: "", example: ""
   });
 
-  // 1. CEK ROLE
+  const [materialForm, setMaterialForm] = useState({
+    id: "", title: "", section_id: "", level_id: "A1", order_index: 0,
+    contentJson: "[]"
+  });
+
+  // 1. CEK ROLE & INIT
   useEffect(() => {
     const checkRole = async () => {
       if (!user) { setIsCheckingRole(false); return; }
       const { data } = await supabase.from("profiles").select("role").eq("id", user.id).single();
+      
+      if (user.user_metadata?.full_name) {
+          setFullName(user.user_metadata.full_name);
+      }
+
       if (data?.role === "admin") {
         setIsAdmin(true);
         fetchLevels();
+        fetchStats();
       }
       setIsCheckingRole(false);
     };
     checkRole();
   }, [user]);
 
-  // 2. FETCH DATA
+  // 2. FETCH DATA & STATS
+  const fetchStats = async () => {
+      const { count: cLevels } = await supabase.from("levels").select("*", { count: "exact", head: true });
+      const { count: cLessons } = await supabase.from("lessons").select("*", { count: "exact", head: true });
+      const { count: cVocabs } = await supabase.from("vocabularies").select("*", { count: "exact", head: true });
+      const { count: cMaterials } = await supabase.from("course_materials").select("*", { count: "exact", head: true });
+      setStats({ 
+          levels: cLevels || 0, 
+          lessons: cLessons || 0, 
+          vocabs: cVocabs || 0, 
+          materials: cMaterials || 0 
+      });
+  };
+
   const fetchLevels = async () => {
     const { data } = await supabase.from("levels").select("*").order("id");
     if (data) setLevels(data);
@@ -85,17 +126,30 @@ const AdminPage = () => {
     setIsLoadingData(false);
   };
 
+  const fetchMaterials = async (levelId: string) => {
+    setIsLoadingData(true);
+    const { data } = await supabase.from("course_materials").select("*").eq("level_id", levelId).order("order_index");
+    if (data) setMaterials(data);
+    setIsLoadingData(false);
+  };
+
+  // Efek Berantai
   useEffect(() => {
     if (selectedLevelId) {
-      fetchLessons(selectedLevelId);
-      setSelectedLessonId(null);
-      setVocabs([]);
+        if (activeMenu === "vocab") {
+            fetchLessons(selectedLevelId);
+            setSelectedLessonId(null);
+            setVocabs([]);
+        } else if (activeMenu === "material") {
+            fetchMaterials(selectedLevelId);
+        }
     }
-  }, [selectedLevelId]);
+  }, [selectedLevelId, activeMenu]);
 
   useEffect(() => {
-    if (selectedLessonId) fetchVocabs(selectedLessonId);
+    if (selectedLessonId && activeMenu === "vocab") fetchVocabs(selectedLessonId);
   }, [selectedLessonId]);
+
 
   // 3. CRUD LOGIC
   const handleSave = async () => {
@@ -129,6 +183,7 @@ const AdminPage = () => {
       toast({ title: "Berhasil! ✅", description: "Data berhasil disimpan." });
       setDialogOpen(false);
       resetForm();
+      fetchStats();
     } catch (err: any) {
       toast({ variant: "destructive", title: "Error", description: err.message });
     } finally {
@@ -136,8 +191,49 @@ const AdminPage = () => {
     }
   };
 
-  const handleDelete = async (id: string, type: "vocab" | "lesson") => {
-    if (!confirm("Yakin hapus? Gak bisa balik lagi lho.")) return;
+  const handleSaveMaterial = async () => {
+      setIsUploading(true);
+      try {
+          let parsedContent;
+          try {
+              parsedContent = JSON.parse(materialForm.contentJson);
+          } catch (e) {
+              throw new Error("Format JSON Konten Salah!");
+          }
+
+          const payload = {
+              level_id: materialForm.level_id,
+              section_id: materialForm.section_id,
+              title: materialForm.title,
+              order_index: materialForm.order_index,
+              content: parsedContent
+          };
+
+          let error = null;
+          if (editingItem) {
+              const { error: err } = await supabase.from("course_materials").update(payload).eq("id", editingItem.id);
+              error = err;
+          } else {
+              const { error: err } = await supabase.from("course_materials").insert(payload);
+              error = err;
+          }
+
+          if (error) throw error;
+          
+          toast({ title: "Materi Tersimpan! 📚", description: "Database diperbarui." });
+          setMaterialDialogOpen(false);
+          if (selectedLevelId) fetchMaterials(selectedLevelId);
+          fetchStats();
+
+      } catch (err: any) {
+          toast({ variant: "destructive", title: "Gagal Simpan", description: err.message });
+      } finally {
+          setIsUploading(false);
+      }
+  };
+
+  const handleDelete = async (id: string, type: "vocab" | "lesson" | "material") => {
+    if (!confirm("Yakin hapus? Data tidak bisa dikembalikan.")) return;
     try {
         if (type === "vocab") {
             await supabase.from("vocabularies").delete().eq("id", id);
@@ -145,11 +241,16 @@ const AdminPage = () => {
         } else if (type === "lesson") {
             await supabase.from("lessons").delete().eq("id", id);
             if (selectedLevelId) fetchLessons(selectedLevelId);
+        } else if (type === "material") {
+            await supabase.from("course_materials").delete().eq("id", id);
+            if (selectedLevelId) fetchMaterials(selectedLevelId);
         }
-        toast({ title: "Terhapus 🗑️", description: "Data sudah hilang." });
+        toast({ title: "Terhapus", description: "Data sudah hilang." });
+        fetchStats();
     } catch (err) { console.error(err); }
   };
 
+  // --- TOOLS ---
   const openEditDialog = (item: any, type: "vocab" | "lesson") => {
     setFormType(type);
     setEditingItem(item);
@@ -164,26 +265,62 @@ const AdminPage = () => {
     setDialogOpen(true);
   };
 
+  const openMaterialDialog = (item: any | null) => {
+      setEditingItem(item);
+      if (item) {
+          setMaterialForm({
+              id: item.id,
+              title: item.title,
+              section_id: item.section_id,
+              level_id: item.level_id,
+              order_index: item.order_index,
+              contentJson: JSON.stringify(item.content, null, 2)
+          });
+      } else {
+          setMaterialForm({
+              id: "", title: "", section_id: "", level_id: selectedLevelId || "A1", order_index: 0,
+              contentJson: '[\n  { "type": "text", "content": "Tulis materi di sini..." }\n]'
+          });
+      }
+      setMaterialDialogOpen(true);
+  };
+
   const resetForm = () => {
     setFormData({ id: "", title: "", description: "", slug: "", order_index: 0, german: "", indonesian: "", example: "" });
   };
 
-  const handleJsonImport = async () => {
+  const handleSmartImport = async () => {
     if (!jsonInput) return;
     setIsUploading(true);
     try {
         const data = JSON.parse(jsonInput);
-        if (!data.level_id || !data.title || !data.slug) throw new Error("JSON invalid.");
-        const { data: lesson, error } = await supabase.from("lessons").insert({
-            level_id: data.level_id, slug: data.slug, title: data.title, order_index: 99
-        }).select().single();
-        if (error) throw error;
-        if (data.vocabulary?.length) {
-            const vocabPayload = data.vocabulary.map((v: any) => ({ lesson_id: lesson.id, german: v.german, indonesian: v.indonesian, example: v.example }));
-            await supabase.from("vocabularies").insert(vocabPayload);
+        
+        if (importType === "vocab") {
+            if (!data.level_id || !data.title || !data.slug) throw new Error("JSON Vocab Invalid. Butuh level_id, title, slug.");
+            const { data: lesson, error } = await supabase.from("lessons").upsert({
+                level_id: data.level_id, slug: data.slug, title: data.title, order_index: 99
+            }, { onConflict: 'slug' }).select().single();
+            if (error) throw error;
+            if (data.vocabulary?.length) {
+                const vocabPayload = data.vocabulary.map((v: any) => ({ 
+                    lesson_id: lesson.id, german: v.german, indonesian: v.indonesian, example: v.example 
+                }));
+                const { error: vocabErr } = await supabase.from("vocabularies").insert(vocabPayload);
+                if (vocabErr) throw vocabErr;
+            }
+            toast({ title: "Import Berhasil", description: `Bab '${data.title}' berhasil ditambahkan.` });
+        } else {
+            if (!data.level_id || !data.section_id || !data.content) throw new Error("JSON Materi Invalid. Butuh section_id, content.");
+            const { error } = await supabase.from("course_materials").upsert({
+                level_id: data.level_id, section_id: data.section_id, title: data.title,
+                order_index: data.order_index || 99, content: data.content,
+                tips: data.tips || [], resources: data.resources || []
+            }, { onConflict: 'section_id' });
+            if (error) throw error;
+            toast({ title: "Import Berhasil", description: `Materi '${data.title}' berhasil disimpan.` });
         }
-        toast({ title: "Import Sukses! 🎉", description: "Materi berhasil masuk." });
         setJsonInput("");
+        fetchStats();
     } catch (e: any) {
         toast({ variant: "destructive", title: "Gagal Import", description: e.message });
     } finally {
@@ -191,276 +328,385 @@ const AdminPage = () => {
     }
   };
 
-  if (isCheckingRole) return <div className="h-screen flex items-center justify-center bg-yellow-50"><Loader2 className="animate-spin h-10 w-10 text-black"/></div>;
-  if (!user || !isAdmin) return (
-    <div className="h-screen flex flex-col items-center justify-center bg-red-50 p-4 text-center">
-        <ShieldAlert className="h-16 w-16 text-red-600 mb-4" />
-        <h1 className="text-3xl font-black text-red-600 uppercase mb-2">Restricted Access</h1>
-        <p className="text-slate-600 font-medium">Halaman ini hanya untuk Sultan Admin.</p>
-        <Button className="mt-6 border-2 border-black font-bold" onClick={() => navigate("/")}>Balik ke Home</Button>
-    </div>
-  );
+  const getPlaceholder = () => {
+      if (importType === "vocab") {
+          return `{
+  "level_id": "A1",
+  "title": "Judul Bab",
+  "slug": "judul_bab_unik",
+  "vocabulary": [
+    { "german": "Apfel", "indonesian": "Apel", "example": "Ich esse..." }
+  ]
+}`;
+      } else {
+          return `{
+  "level_id": "A1",
+  "section_id": "unik_id_materi",
+  "title": "Judul Materi",
+  "order_index": 1,
+  "content": [
+    { "type": "text", "content": "Halo dunia." },
+    { "type": "table", "headers": ["A", "B"], "rows": [["1", "2"]] }
+  ],
+  "tips": ["Tips 1"],
+  "resources": []
+}`;
+      }
+  };
+
+  if (isCheckingRole) return <div className="h-screen flex items-center justify-center bg-white"><Loader2 className="animate-spin h-10 w-10 text-slate-800"/></div>;
+  if (!user || !isAdmin) return <div className="h-screen flex items-center justify-center">Access Denied</div>;
 
   return (
-    <div className="min-h-screen bg-yellow-50 font-sans pb-20">
+    // FIX: Full Page Overlay to hide global header (Z-index high + fixed)
+    <div className="fixed inset-0 z-[99999] flex bg-slate-50 font-sans overflow-hidden">
       
-      {/* HEADER KEREN */}
-      <div className="bg-white border-b-4 border-black sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="bg-black text-yellow-400 p-2 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                <Crown className="w-6 h-6 fill-current" />
-            </div>
-            <div>
-                <h1 className="text-2xl font-black uppercase tracking-tighter">Admin<span className="text-blue-600">Panel</span></h1>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Markas Besar Konten</p>
-            </div>
+      {/* SIDEBAR (Diperbarui: Posisi Kanan untuk Mobile & Tablet, Kiri untuk Desktop Large) */}
+      {/* Overlay Backdrop Mobile */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={cn(
+          "fixed lg:relative z-50 h-full w-72 flex flex-col transition-transform duration-300 ease-in-out bg-white border-l lg:border-r lg:border-l-0 border-slate-200 shadow-2xl lg:shadow-none",
+          // LOGIKA CSS UTAMA DIPERBAIKI UNTUK TABLET:
+          // md (Tablet): Masih dianggap 'mobile' (hidden by default, muncul dari kanan)
+          // lg (Desktop): Baru muncul permanen di kiri
+          "right-0 lg:left-0 lg:right-auto", 
+          mobileMenuOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+      )}>
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                  <div className="bg-black text-white p-1.5 rounded">
+                    <LayoutDashboard className="w-5 h-5" />
+                  </div>
+                  <span className="font-bold text-lg tracking-tight">Admin<span className="text-slate-400">Panel</span></span>
+              </div>
+              <button onClick={() => setMobileMenuOpen(false)} className="lg:hidden"><X className="w-5 h-5"/></button>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-bold hidden md:inline-block bg-slate-100 px-3 py-1 rounded border-2 border-slate-200">
-                👮 {user.email}
-            </span>
-            <Button variant="destructive" size="sm" className="font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-1" onClick={() => { signOut(); navigate("/login"); }}>
-                <LogOut className="w-4 h-4 mr-2" /> Logout
-            </Button>
+
+          <div className="flex-1 overflow-y-auto py-6 px-4 space-y-1">
+              <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Main Menu</p>
+              <button onClick={() => {setActiveMenu("dashboard"); setMobileMenuOpen(false)}} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all", activeMenu === "dashboard" ? "bg-slate-100 text-slate-900" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50")}>
+                  <Home className="w-4 h-4"/> Dashboard
+              </button>
+              
+              <div className="my-6 border-t border-slate-100"></div>
+              
+              <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Content</p>
+              <button onClick={() => {setActiveMenu("vocab"); setMobileMenuOpen(false)}} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all", activeMenu === "vocab" ? "bg-blue-50 text-blue-700" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50")}>
+                  <Database className="w-4 h-4"/> Database Kosakata
+              </button>
+              <button onClick={() => {setActiveMenu("material"); setMobileMenuOpen(false)}} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all", activeMenu === "material" ? "bg-green-50 text-green-700" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50")}>
+                  <BookText className="w-4 h-4"/> Materi Bacaan
+              </button>
+
+              <div className="my-6 border-t border-slate-100"></div>
+              
+              <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">System</p>
+              <button onClick={() => {setActiveMenu("import"); setMobileMenuOpen(false)}} className={cn("w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-all", activeMenu === "import" ? "bg-purple-50 text-purple-700" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50")}>
+                  <FileJson className="w-4 h-4"/> Import JSON
+              </button>
           </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-8">
-        
-        <Tabs defaultValue="manage" className="space-y-8">
-            <div className="flex justify-center">
-                <TabsList className="bg-white border-2 border-black p-1 h-auto shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                    <TabsTrigger value="manage" className="data-[state=active]:bg-blue-600 data-[state=active]:text-white font-black text-sm uppercase px-6 py-2 border border-transparent data-[state=active]:border-black">
-                        <Database className="w-4 h-4 mr-2" /> Manage Database (CRUD)
-                    </TabsTrigger>
-                    <TabsTrigger value="import" className="data-[state=active]:bg-yellow-400 data-[state=active]:text-black font-black text-sm uppercase px-6 py-2 border border-transparent data-[state=active]:border-black">
-                        <FileJson className="w-4 h-4 mr-2" /> Import JSON
-                    </TabsTrigger>
-                </TabsList>
-            </div>
+          <div className="p-4 border-t border-slate-100 bg-slate-50">
+              <button onClick={() => navigate("/")} className="w-full flex items-center gap-2 text-slate-500 hover:text-black text-sm font-medium mb-3 px-2">
+                  <ArrowLeft className="w-4 h-4"/> Kembali ke Website
+              </button>
+              <div className="flex items-center gap-3 px-2">
+                  <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+                      <UserCircle className="w-5 h-5 text-slate-500"/>
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                      <p className="text-xs font-bold text-slate-900 truncate">{fullName}</p>
+                      <p className="text-[10px] text-slate-500 truncate">Administrator</p>
+                  </div>
+                  <button onClick={() => { signOut(); navigate("/login"); }} className="text-slate-400 hover:text-red-500"><LogOut className="w-4 h-4"/></button>
+              </div>
+          </div>
+      </aside>
 
-            {/* --- TAB 1: MANAGE DATABASE --- */}
-            <TabsContent value="manage" className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-                
-                {/* 1. FILTER CARD */}
-                <Card className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white">
-                    <CardHeader className="bg-slate-50 border-b-2 border-black pb-3">
-                        <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2 text-slate-500">
-                            <Search className="w-4 h-4" /> Filter Konten
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label className="font-bold text-lg">Pilih Level</Label>
-                            <Select onValueChange={(val) => setSelectedLevelId(val)}>
-                                <SelectTrigger className="border-2 border-black font-bold h-12 text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                                    <SelectValue placeholder="-- LEVEL --" />
-                                </SelectTrigger>
-                                <SelectContent className="border-2 border-black font-bold">
-                                    {levels.map(l => <SelectItem key={l.id} value={l.id} className="focus:bg-blue-100 cursor-pointer">{l.id} - {l.title}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="font-bold text-lg">Pilih Bab (Lesson)</Label>
-                            <Select 
-                                disabled={!selectedLevelId} 
-                                onValueChange={(val) => setSelectedLessonId(val)}
-                                value={selectedLessonId || ""}
-                            >
-                                <SelectTrigger className="border-2 border-black font-bold h-12 text-lg shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                                    <SelectValue placeholder={isLoadingData ? "Loading..." : "-- BAB / TOPIK --"} />
-                                </SelectTrigger>
-                                <SelectContent className="border-2 border-black font-bold">
-                                    {lessons.map(l => <SelectItem key={l.id} value={l.id} className="focus:bg-green-100 cursor-pointer">{l.title}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </CardContent>
-                </Card>
+      {/* MAIN CONTENT */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden relative transition-all duration-300">
+          
+          {/* Mobile & Tablet Header (< 1024px) */}
+          <div className="lg:hidden px-6 py-4 bg-white/80 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-40 flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-2">
+                  <div className="bg-gradient-to-tr from-purple-600 to-blue-500 p-1.5 rounded-lg">
+                    <Crown className="w-4 h-4 text-white fill-white" />
+                  </div>
+                  <span className="font-black text-lg text-slate-900 tracking-tight">Admin<span className="text-purple-600">.Dash</span></span>
+              </div>
+              <button 
+                onClick={() => setMobileMenuOpen(true)} 
+                className="p-2 bg-white border border-slate-200 rounded-lg shadow-sm text-slate-600 active:scale-95 transition-transform"
+              >
+                <Menu className="w-6 h-6"/>
+              </button>
+          </div>
 
-                {/* 2. LESSON LIST (Muncul jika Level dipilih) */}
-                {selectedLevelId && !selectedLessonId && (
-                    <Card className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white">
-                        <CardHeader className="flex flex-row items-center justify-between border-b-4 border-black bg-blue-50 py-4">
-                            <CardTitle className="text-xl font-black uppercase flex items-center gap-2">
-                                <Layers className="w-6 h-6 text-blue-600" /> Daftar Bab di {selectedLevelId}
-                            </CardTitle>
-                            <Button onClick={() => openCreateDialog("lesson")} className="bg-blue-600 hover:bg-blue-700 text-white font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
-                                <Plus className="w-5 h-5 mr-1"/> Tambah Bab
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow className="border-b-2 border-black bg-slate-100 hover:bg-slate-100">
-                                        <TableHead className="text-black font-black uppercase w-[100px]">Urutan</TableHead>
-                                        <TableHead className="text-black font-black uppercase">Judul Bab</TableHead>
-                                        <TableHead className="text-black font-black uppercase">Slug</TableHead>
-                                        <TableHead className="text-black font-black uppercase text-right">Aksi</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {lessons.length === 0 ? (
-                                        <TableRow><TableCell colSpan={4} className="text-center py-10 font-bold text-slate-400">Belum ada bab. Buat baru yuk!</TableCell></TableRow>
-                                    ) : (
-                                        lessons.map(ls => (
-                                            <TableRow key={ls.id} className="border-b border-slate-200 hover:bg-blue-50 font-medium">
-                                                <TableCell className="text-center bg-slate-50 font-black border-r border-slate-200">#{ls.order_index}</TableCell>
-                                                <TableCell className="text-lg">{ls.title}</TableCell>
-                                                <TableCell className="font-mono text-xs text-slate-500">{ls.slug}</TableCell>
-                                                <TableCell className="text-right space-x-2">
-                                                    <Button variant="outline" size="sm" onClick={() => openEditDialog(ls, "lesson")} className="border-2 border-black hover:bg-yellow-200"><Edit2 className="w-4 h-4"/></Button>
-                                                    <Button variant="destructive" size="sm" onClick={() => handleDelete(ls.id, "lesson")} className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-none"><Trash2 className="w-4 h-4"/></Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                )}
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto p-6 md:p-12">
+              <div className="max-w-6xl mx-auto pb-20">
+                  
+                  {/* --- 1. DASHBOARD --- */}
+                  {activeMenu === "dashboard" && (
+                      <div className="space-y-8 animate-in fade-in duration-500">
+                          <div className="flex flex-col gap-1">
+                              <h1 className="text-3xl font-bold text-slate-900">Selamat Datang, {fullName.split(" ")[0]}.</h1>
+                              <p className="text-slate-500">Berikut adalah ringkasan konten pembelajaran saat ini.</p>
+                          </div>
 
-                {/* 3. VOCAB LIST (Muncul jika Lesson dipilih) */}
-                {selectedLessonId && (
-                    <Card className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white">
-                        <CardHeader className="flex flex-row items-center justify-between border-b-4 border-black bg-green-50 py-4">
-                            <CardTitle className="text-xl font-black uppercase flex items-center gap-2">
-                                <BookOpen className="w-6 h-6 text-green-600" /> Kosakata (Vocab)
-                            </CardTitle>
-                            <Button onClick={() => openCreateDialog("vocab")} className="bg-green-500 hover:bg-green-600 text-black font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none">
-                                <Plus className="w-5 h-5 mr-1"/> Tambah Kata
-                            </Button>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {isLoadingData ? (
-                                <div className="p-20 flex justify-center"><Loader2 className="animate-spin w-10 h-10 text-green-500"/></div>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow className="border-b-2 border-black bg-slate-100 hover:bg-slate-100">
-                                            <TableHead className="text-black font-black uppercase w-1/3">Jerman</TableHead>
-                                            <TableHead className="text-black font-black uppercase w-1/3">Indonesia</TableHead>
-                                            <TableHead className="text-black font-black uppercase w-1/4 hidden md:table-cell">Contoh</TableHead>
-                                            <TableHead className="text-black font-black uppercase text-right">Aksi</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {vocabs.length === 0 ? (
-                                            <TableRow><TableCell colSpan={4} className="text-center py-10 font-bold text-slate-400">Kosong. Tambah data manual atau import JSON.</TableCell></TableRow>
-                                        ) : (
-                                            vocabs.map(v => (
-                                                <TableRow key={v.id} className="border-b border-slate-200 hover:bg-green-50 font-medium">
-                                                    <TableCell className="text-lg font-bold text-blue-800">{v.german}</TableCell>
-                                                    <TableCell className="text-lg">{v.indonesian}</TableCell>
-                                                    <TableCell className="italic text-slate-500 hidden md:table-cell">{v.example}</TableCell>
-                                                    <TableCell className="text-right space-x-2">
-                                                        <Button variant="outline" size="sm" onClick={() => openEditDialog(v, "vocab")} className="border-2 border-black hover:bg-yellow-200"><Edit2 className="w-4 h-4"/></Button>
-                                                        <Button variant="destructive" size="sm" onClick={() => handleDelete(v.id, "vocab")} className="border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:translate-y-[1px] hover:shadow-none"><Trash2 className="w-4 h-4"/></Button>
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </CardContent>
-                    </Card>
-                )}
-            </TabsContent>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                              {[
+                                  { label: "Level Aktif", val: stats.levels, icon: Crown, color: "text-blue-600", bg: "bg-blue-50" },
+                                  { label: "Total Bab", val: stats.lessons, icon: Layers, color: "text-green-600", bg: "bg-green-50" },
+                                  { label: "Kosakata", val: stats.vocabs, icon: BookOpen, color: "text-yellow-600", bg: "bg-yellow-50" },
+                                  { label: "Materi Bacaan", val: stats.materials, icon: BookText, color: "text-purple-600", bg: "bg-purple-50" },
+                              ].map((item, i) => (
+                                  <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-shadow">
+                                      <CardContent className="p-6 flex items-center gap-4">
+                                          <div className={cn("p-3 rounded-xl", item.bg, item.color)}>
+                                              <item.icon className="w-6 h-6"/>
+                                          </div>
+                                          <div>
+                                              <p className="text-2xl font-bold text-slate-900">{item.val}</p>
+                                              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">{item.label}</p>
+                                          </div>
+                                      </CardContent>
+                                  </Card>
+                              ))}
+                          </div>
 
-            {/* --- TAB 2: IMPORT JSON --- */}
-            <TabsContent value="import">
-                <Card className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white">
-                    <CardHeader className="bg-yellow-50 border-b-4 border-black">
-                        <CardTitle className="text-xl font-black uppercase flex items-center gap-2">
-                            <FileJson className="w-6 h-6 text-yellow-600"/> Import Massal (JSON)
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <p className="text-sm font-bold text-slate-500 mb-2 uppercase">Paste Kode JSON dari Gemini di sini:</p>
-                        <Textarea 
-                            placeholder='{ "title": "...", "vocabulary": [...] }' 
-                            className="font-mono text-xs h-[300px] border-4 border-slate-200 focus-visible:ring-0 focus-visible:border-black bg-slate-50 p-4 rounded-xl"
-                            value={jsonInput}
-                            onChange={(e) => setJsonInput(e.target.value)}
-                        />
-                        <Button 
-                            className="w-full mt-6 h-14 text-lg font-black bg-black hover:bg-slate-800 text-white border-4 border-transparent hover:border-yellow-400"
-                            onClick={handleJsonImport}
-                            disabled={isUploading || !jsonInput}
-                        >
-                            {isUploading ? <><Loader2 className="animate-spin mr-2"/> PROSES...</> : <><UploadCloud className="mr-2"/> IMPORT SEKARANG</>}
-                        </Button>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <Card className="border-0 shadow-sm bg-gradient-to-br from-slate-900 to-slate-800 text-white">
+                                  <CardContent className="p-8">
+                                      <div className="mb-6">
+                                          <h3 className="text-xl font-bold mb-2">Ingin menambah data massal?</h3>
+                                          <p className="text-slate-400 text-sm">Gunakan fitur import JSON untuk mempercepat proses input materi dan kosakata.</p>
+                                      </div>
+                                      <Button onClick={() => setActiveMenu("import")} className="bg-white text-black hover:bg-slate-200 font-bold border-0">
+                                          Mulai Import JSON
+                                      </Button>
+                                  </CardContent>
+                              </Card>
+                          </div>
+                      </div>
+                  )}
 
-        {/* --- DIALOG FORM (CREATE/EDIT) --- */}
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogContent className="border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl font-black uppercase flex items-center gap-2">
-                        {editingItem ? <Edit2 className="w-6 h-6 text-yellow-500"/> : <Plus className="w-6 h-6 text-green-600"/>}
-                        {editingItem ? "Edit Data" : "Tambah Baru"}
-                    </DialogTitle>
-                    <DialogDescription className="font-bold text-slate-400 uppercase tracking-widest text-xs">
-                        {formType === "vocab" ? "Pastikan ejaan Jerman benar!" : "Buat bab baru yang menarik."}
-                    </DialogDescription>
-                </DialogHeader>
-                
-                <div className="grid gap-4 py-4">
-                    {/* FORM VOCAB */}
-                    {formType === "vocab" && (
-                        <>
-                            <div className="space-y-1">
-                                <Label className="font-black uppercase text-xs">Bahasa Jerman</Label>
-                                <Input className="border-2 border-black font-bold focus-visible:ring-green-500" value={formData.german} onChange={e => setFormData({...formData, german: e.target.value})} placeholder="Contoh: der Apfel" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="font-black uppercase text-xs">Bahasa Indonesia</Label>
-                                <Input className="border-2 border-black font-bold" value={formData.indonesian} onChange={e => setFormData({...formData, indonesian: e.target.value})} placeholder="Contoh: Apel" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="font-black uppercase text-xs">Contoh Kalimat</Label>
-                                <Textarea className="border-2 border-black font-medium" value={formData.example} onChange={e => setFormData({...formData, example: e.target.value})} placeholder="Contoh: Ich esse einen Apfel." />
-                            </div>
-                        </>
-                    )}
+                  {/* --- 2. VOCAB MANAGER --- */}
+                  {activeMenu === "vocab" && (
+                      <div className="space-y-6 animate-in fade-in duration-300">
+                          <div className="flex items-center justify-between">
+                              <h2 className="text-2xl font-bold text-slate-900">Kelola Kosakata</h2>
+                          </div>
 
-                    {/* FORM LESSON */}
-                    {formType === "lesson" && (
-                        <>
-                            <div className="space-y-1">
-                                <Label className="font-black uppercase text-xs">Judul Bab</Label>
-                                <Input className="border-2 border-black font-bold focus-visible:ring-blue-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} placeholder="Contoh: Essen & Trinken" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="font-black uppercase text-xs">Slug (ID Unik - Huruf Kecil)</Label>
-                                <Input className="border-2 border-black font-mono text-sm bg-slate-50" value={formData.slug} onChange={e => setFormData({...formData, slug: e.target.value})} placeholder="Contoh: essen_trinken" />
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="font-black uppercase text-xs">Urutan (Angka)</Label>
-                                <Input type="number" className="border-2 border-black font-bold" value={formData.order_index} onChange={e => setFormData({...formData, order_index: parseInt(e.target.value)})} />
-                            </div>
-                        </>
-                    )}
-                </div>
+                          <Card className="border shadow-sm">
+                              <CardContent className="p-6 grid md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                      <Label className="text-xs uppercase text-slate-500 font-bold">Pilih Level</Label>
+                                      <Select onValueChange={(val) => setSelectedLevelId(val)}>
+                                          <SelectTrigger className="h-11 bg-slate-50 border-slate-200"><SelectValue placeholder="Pilih Level..." /></SelectTrigger>
+                                          <SelectContent>{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.id} - {l.title}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                      <Label className="text-xs uppercase text-slate-500 font-bold">Pilih Bab</Label>
+                                      <Select disabled={!selectedLevelId} onValueChange={(val) => setSelectedLessonId(val)} value={selectedLessonId || ""}>
+                                          <SelectTrigger className="h-11 bg-slate-50 border-slate-200"><SelectValue placeholder={isLoadingData ? "Loading..." : "Pilih Bab..."} /></SelectTrigger>
+                                          <SelectContent>{lessons.map(l => <SelectItem key={l.id} value={l.id}>{l.title}</SelectItem>)}</SelectContent>
+                                      </Select>
+                                  </div>
+                              </CardContent>
+                          </Card>
 
-                <DialogFooter className="gap-2">
-                    <Button variant="outline" onClick={() => setDialogOpen(false)} className="border-2 border-black font-bold flex-1">Batal</Button>
-                    <Button onClick={handleSave} disabled={isUploading} className="bg-black hover:bg-slate-800 text-white font-bold border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none flex-1">
-                        {isUploading ? <Loader2 className="animate-spin w-4 h-4"/> : (editingItem ? "SIMPAN" : "BUAT")}
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                          {selectedLevelId && !selectedLessonId && (
+                              <Card className="border shadow-sm">
+                                  <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
+                                      <h3 className="font-bold text-slate-700">Daftar Bab ({selectedLevelId})</h3>
+                                      <Button onClick={() => openCreateDialog("lesson")} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-bold"><Plus className="w-4 h-4 mr-1"/> Bab Baru</Button>
+                                  </div>
+                                  <Table>
+                                      <TableHeader><TableRow><TableHead>Index</TableHead><TableHead>Judul</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
+                                      <TableBody>
+                                          {lessons.map(ls => (
+                                              <TableRow key={ls.id}>
+                                                  <TableCell className="font-bold text-slate-500">#{ls.order_index}</TableCell>
+                                                  <TableCell className="font-medium">{ls.title}</TableCell>
+                                                  <TableCell className="text-right space-x-2">
+                                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(ls, "lesson")}><Edit2 className="w-4 h-4 text-slate-500"/></Button>
+                                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(ls.id, "lesson")}><Trash2 className="w-4 h-4 text-red-500"/></Button>
+                                                  </TableCell>
+                                              </TableRow>
+                                          ))}
+                                      </TableBody>
+                                  </Table>
+                              </Card>
+                          )}
 
-      </div>
+                          {selectedLessonId && (
+                              <Card className="border shadow-sm">
+                                  <div className="p-4 border-b flex justify-between items-center bg-slate-50/50">
+                                      <h3 className="font-bold text-slate-700">Daftar Kata</h3>
+                                      <Button onClick={() => openCreateDialog("vocab")} size="sm" className="bg-green-600 hover:bg-green-700 text-white font-bold"><Plus className="w-4 h-4 mr-1"/> Kata Baru</Button>
+                                  </div>
+                                  <Table>
+                                      <TableHeader><TableRow><TableHead>Jerman</TableHead><TableHead>Indonesia</TableHead><TableHead className="text-right">Aksi</TableHead></TableRow></TableHeader>
+                                      <TableBody>
+                                          {vocabs.map(v => (
+                                              <TableRow key={v.id}>
+                                                  <TableCell className="font-bold text-blue-700">{v.german}</TableCell>
+                                                  <TableCell>{v.indonesian}</TableCell>
+                                                  <TableCell className="text-right space-x-2">
+                                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => openEditDialog(v, "vocab")}><Edit2 className="w-4 h-4 text-slate-500"/></Button>
+                                                      <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => handleDelete(v.id, "vocab")}><Trash2 className="w-4 h-4 text-red-500"/></Button>
+                                                  </TableCell>
+                                              </TableRow>
+                                          ))}
+                                      </TableBody>
+                                  </Table>
+                              </Card>
+                          )}
+                      </div>
+                  )}
+
+                  {/* --- 3. MATERIAL MANAGER --- */}
+                  {activeMenu === "material" && (
+                      <div className="space-y-6 animate-in fade-in duration-300">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <h2 className="text-2xl font-bold text-slate-900">Content Management</h2>
+                              <div className="flex gap-2 bg-white p-1 rounded-lg border shadow-sm">
+                                  {levels.map(l => (
+                                      <button key={l.id} onClick={() => { setSelectedLevelId(l.id); fetchMaterials(l.id); }} className={cn("px-4 py-1.5 rounded-md text-sm font-bold transition-all", selectedLevelId === l.id ? "bg-slate-900 text-white shadow" : "text-slate-500 hover:bg-slate-50")}>{l.id}</button>
+                                  ))}
+                              </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                              <button onClick={() => openMaterialDialog(null)} className="h-[180px] rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-500 hover:bg-blue-50 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-blue-600 gap-3 group">
+                                  <div className="p-3 bg-slate-100 rounded-full group-hover:bg-blue-100 transition-colors"><Plus className="w-6 h-6"/></div>
+                                  <span className="font-bold text-sm">Buat Materi Baru</span>
+                              </button>
+
+                              {materials.map((mat) => (
+                                  <div key={mat.id} className="bg-white border rounded-xl p-5 hover:shadow-lg transition-all group flex flex-col">
+                                      <div className="flex justify-between items-start mb-3">
+                                          <span className="px-2 py-1 bg-slate-100 text-[10px] font-mono font-bold text-slate-500 rounded">{mat.section_id}</span>
+                                          <span className="text-xs font-bold text-slate-300">#{mat.order_index}</span>
+                                      </div>
+                                      <h3 className="font-bold text-lg leading-snug mb-6 line-clamp-2 text-slate-800 group-hover:text-blue-600 transition-colors">{mat.title}</h3>
+                                      <div className="mt-auto flex gap-2 pt-4 border-t border-slate-50">
+                                          <Button onClick={() => openMaterialDialog(mat)} variant="outline" size="sm" className="flex-1 h-9 text-xs font-bold">Edit</Button>
+                                          <Button onClick={() => handleDelete(mat.id, "material")} variant="ghost" size="sm" className="h-9 w-9 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-4 h-4"/></Button>
+                                      </div>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
+
+                  {/* --- 4. IMPORT --- */}
+                  {activeMenu === "import" && (
+                      <div className="space-y-6 animate-in fade-in duration-300">
+                          <h2 className="text-2xl font-bold text-slate-900">Import JSON</h2>
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                              <Card className="lg:col-span-1 border-0 shadow-sm h-fit">
+                                  <CardContent className="p-6 space-y-4">
+                                      <div className="space-y-2">
+                                          <Label className="text-xs font-bold uppercase text-slate-500">Tipe Data</Label>
+                                          <Select value={importType} onValueChange={(val: any) => setImportType(val)}>
+                                              <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
+                                              <SelectContent><SelectItem value="vocab">KOSAKATA</SelectItem><SelectItem value="material">MATERI</SelectItem></SelectContent>
+                                          </Select>
+                                      </div>
+                                      <div className="bg-slate-50 p-4 rounded-lg border text-xs font-mono text-slate-600 overflow-auto max-h-[400px]">
+                                          <p className="font-bold mb-2 text-slate-400">Template:</p>
+                                          <pre className="whitespace-pre-wrap break-words">{getPlaceholder()}</pre>
+                                      </div>
+                                  </CardContent>
+                              </Card>
+                              <Card className="lg:col-span-2 border-0 shadow-sm flex flex-col">
+                                  <CardHeader className="border-b bg-slate-50/50"><CardTitle className="text-base font-bold flex items-center gap-2"><FileCode className="w-4 h-4"/> Editor</CardTitle></CardHeader>
+                                  <CardContent className="p-0 flex-1 flex flex-col">
+                                      <Textarea 
+                                          className="flex-1 min-h-[400px] border-0 rounded-none p-6 font-mono text-xs focus-visible:ring-0 bg-white"
+                                          placeholder="// Paste JSON di sini..."
+                                          value={jsonInput}
+                                          onChange={(e) => setJsonInput(e.target.value)}
+                                          spellCheck={false}
+                                      />
+                                      <div className="p-4 border-t bg-slate-50 flex justify-end">
+                                          <Button onClick={handleSmartImport} disabled={isUploading || !jsonInput} className="font-bold bg-black text-white hover:bg-slate-800">
+                                              {isUploading ? <Loader2 className="animate-spin w-4 h-4 mr-2"/> : <UploadCloud className="w-4 h-4 mr-2"/>}
+                                              Proses Import
+                                          </Button>
+                                      </div>
+                                  </CardContent>
+                              </Card>
+                          </div>
+                      </div>
+                  )}
+
+              </div>
+          </div>
+      </main>
+
+      {/* --- DIALOG EDIT FORM --- */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+          <DialogContent className="sm:max-w-md rounded-2xl border-0 shadow-xl">
+              <DialogHeader><DialogTitle>{editingItem ? "Edit Data" : "Tambah Baru"}</DialogTitle></DialogHeader>
+              <div className="grid gap-4 py-4">
+                  {formType === "vocab" ? (
+                      <>
+                          <div className="space-y-1"><Label className="text-xs font-bold text-slate-500">Jerman</Label><Input value={formData.german} onChange={e => setFormData({...formData, german: e.target.value})} className="font-bold"/></div>
+                          <div className="space-y-1"><Label className="text-xs font-bold text-slate-500">Indonesia</Label><Input value={formData.indonesian} onChange={e => setFormData({...formData, indonesian: e.target.value})} className="font-bold"/></div>
+                          <div className="space-y-1"><Label className="text-xs font-bold text-slate-500">Contoh</Label><Textarea value={formData.example} onChange={e => setFormData({...formData, example: e.target.value})} /></div>
+                      </>
+                  ) : (
+                      <>
+                          <div className="space-y-1"><Label className="text-xs font-bold text-slate-500">Judul Bab</Label><Input value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} className="font-bold"/></div>
+                          <div className="space-y-1"><Label className="text-xs font-bold text-slate-500">Slug</Label><Input value={formData.slug} onChange={e => setFormData({...formData, slug: e.target.value})} className="font-mono text-sm"/></div>
+                          <div className="space-y-1"><Label className="text-xs font-bold text-slate-500">Urutan</Label><Input type="number" value={formData.order_index} onChange={e => setFormData({...formData, order_index: parseInt(e.target.value)})} /></div>
+                      </>
+                  )}
+              </div>
+              <DialogFooter>
+                  <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
+                  <Button onClick={handleSave} disabled={isUploading}>Simpan</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
+      {/* --- DIALOG MATERI JSON --- */}
+      <Dialog open={materialDialogOpen} onOpenChange={setMaterialDialogOpen}>
+          <DialogContent className="max-w-4xl w-[95vw] h-[85vh] flex flex-col p-0 overflow-hidden rounded-2xl border-0 shadow-2xl bg-white">
+              <DialogHeader className="px-6 py-4 border-b flex flex-row items-center justify-between bg-slate-50/50">
+                  <DialogTitle className="flex items-center gap-2"><FileCode className="w-5 h-5 text-purple-600"/> JSON Content Editor</DialogTitle>
+              </DialogHeader>
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                  <div className="w-full md:w-80 bg-white p-6 overflow-y-auto border-r space-y-4">
+                      <div className="space-y-1"><Label className="text-xs font-bold">Judul</Label><Input value={materialForm.title} onChange={e => setMaterialForm({...materialForm, title: e.target.value})} className="font-bold"/></div>
+                      <div className="space-y-1"><Label className="text-xs font-bold">Section ID</Label><Input value={materialForm.section_id} onChange={e => setMaterialForm({...materialForm, section_id: e.target.value})} className="font-mono text-xs"/></div>
+                      <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1"><Label className="text-xs font-bold">Urutan</Label><Input type="number" value={materialForm.order_index} onChange={e => setMaterialForm({...materialForm, order_index: parseInt(e.target.value)})} /></div>
+                          <div className="space-y-1"><Label className="text-xs font-bold">Level</Label><Select value={materialForm.level_id} onValueChange={(val) => setMaterialForm({...materialForm, level_id: val})}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{levels.map(l => <SelectItem key={l.id} value={l.id}>{l.id}</SelectItem>)}</SelectContent></Select></div>
+                      </div>
+                  </div>
+                  <div className="flex-1 bg-slate-950 p-0 relative flex flex-col">
+                      <div className="absolute top-0 right-0 bg-white/10 text-white text-[10px] font-mono px-3 py-1 font-bold z-10">RAW JSON</div>
+                      <Textarea className="flex-1 font-mono text-sm bg-transparent text-green-400 border-none resize-none p-6 focus-visible:ring-0 leading-relaxed" value={materialForm.contentJson} onChange={e => setMaterialForm({...materialForm, contentJson: e.target.value})} spellCheck={false} />
+                  </div>
+              </div>
+              <DialogFooter className="px-6 py-4 border-t bg-white">
+                  <Button variant="outline" onClick={() => setMaterialDialogOpen(false)}>Batal</Button>
+                  <Button onClick={handleSaveMaterial} disabled={isUploading} className="bg-green-600 hover:bg-green-700 text-white">Simpan Materi</Button>
+              </DialogFooter>
+          </DialogContent>
+      </Dialog>
+
     </div>
   );
 };

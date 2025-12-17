@@ -1,38 +1,60 @@
-import { useState } from "react"; // Tambah useState
-import { useParams, useNavigate, Link } from "react-router-dom"; // Tambah useNavigate
-import { courseMaterials, ContentBlock } from "@/data/course_materials";
-import { examMaterials } from "@/data/exam_materials";
+import { useState, useEffect } from "react"; 
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, Lightbulb, ExternalLink, FileText, Youtube, Headphones, Globe, PlayCircle, AlertTriangle, X } from "lucide-react"; // Tambah AlertTriangle, X
+import { ArrowLeft, BookOpen, Lightbulb, ExternalLink, FileText, Youtube, Headphones, Globe, PlayCircle, AlertTriangle, X, Loader2 } from "lucide-react"; 
 import { cn } from "@/lib/utils";
 import AudioButton from "@/components/AudioButton";
 
+// Import Fetcher Database (PENTING!)
+import { getCourseMaterialsFromDB, CourseMaterial, ContentBlock } from "@/data/course_materials";
+// Kita asumsikan examMaterials masih hardcode untuk sementara (atau bisa dimigrasi juga nanti)
+import { examMaterials } from "@/data/exam_materials"; 
+
 const MaterialPage = () => {
   const { levelId } = useParams();
-  const navigate = useNavigate(); // Hook untuk pindah halaman manual
-  const [showConfirm, setShowConfirm] = useState(false); // State untuk modal
+  const navigate = useNavigate();
+  const [showConfirm, setShowConfirm] = useState(false);
+  
+  // State untuk data dari Database
+  const [material, setMaterial] = useState<CourseMaterial | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Gabungkan materi belajar dan materi ujian
-  const allMaterials = [...courseMaterials, ...examMaterials];
-  const material = allMaterials.find((m) => m.id === levelId);
-
-  // Cek apakah ini materi Ujian (ID dimulai dengan "EXAM")
+  // Cek apakah ini Ujian
   const isExamMaterial = levelId?.startsWith("EXAM");
+
+  // --- FETCH DATA (useEffect) ---
+  useEffect(() => {
+    const fetchData = async () => {
+        setLoading(true);
+        if (levelId) {
+            if (isExamMaterial) {
+                // Kalo Ujian, ambil dari file lokal (sementara)
+                const exam = examMaterials.find(e => e.id === levelId);
+                // Kita casting tipe biar cocok (asumsi struktur sama)
+                if (exam) setMaterial(exam as unknown as CourseMaterial); 
+            } else {
+                // Kalo Materi Belajar, AMBIL DARI DATABASE SUPABASE!
+                const data = await getCourseMaterialsFromDB(levelId);
+                setMaterial(data);
+            }
+        }
+        setLoading(false);
+    };
+    fetchData();
+  }, [levelId, isExamMaterial]);
+
 
   // --- LOGIKA TOMBOL START ---
   const handleStartClick = () => {
     if (isExamMaterial) {
-      // Jika Ujian, munculkan konfirmasi dulu
       setShowConfirm(true);
     } else {
-      // Jika Materi biasa, langsung pindah
       navigate(`/level/${levelId}`);
     }
   };
 
   const confirmStartExam = () => {
-    // Tutup modal dan pindah ke halaman ujian
     setShowConfirm(false);
     navigate(`/simulation/${levelId}`);
   };
@@ -75,8 +97,6 @@ const MaterialPage = () => {
               {block.rows.map((row, rIdx) => (
                 <tr key={rIdx} className={cn("border-b border-foreground/20", rIdx % 2 === 0 ? "bg-white" : "bg-muted/30")}>
                   {row.map((cell, cIdx) => (
-                    // --- PERBAIKAN DI SINI ---
-                    // Tambahkan 'whitespace-pre-wrap' di akhir className
                     <td key={cIdx} className="p-3 md:p-4 font-bold border-r border-foreground/10 last:border-r-0 text-sm md:text-base relative group whitespace-pre-wrap">
                       <div className="flex items-center justify-between gap-3">
                         <span className="flex-1">{formatText(cell)}</span>
@@ -97,10 +117,22 @@ const MaterialPage = () => {
     }
   };
 
+  // --- TAMPILAN LOADING ---
+  if (loading) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center">
+              <Loader2 className="h-12 w-12 animate-spin text-foreground mb-4" />
+              <p className="font-bold text-slate-500">Sebentar yaww!! Lagi nyiapin materinya nih...</p>
+          </div>
+      );
+  }
+
+  // --- TAMPILAN ERROR / KOSONG ---
   if (!material) {
     return (
       <div className="container mx-auto px-4 py-20 text-center">
-        <h1 className="text-4xl font-black mb-4">Materi Belum Tersedia</h1>
+        <h1 className="text-4xl font-black mb-4">Materi Tidak Ditemukan</h1>
+        <p className="text-muted-foreground mb-6">Mungkin belum ada data untuk level {levelId} di database.</p>
         <Link to="/"><Button size="lg" className="border-2 border-foreground">Kembali ke Home</Button></Link>
       </div>
     );
@@ -178,10 +210,10 @@ const MaterialPage = () => {
           ))}
         </div>
 
-        {/* --- TOMBOL AKSI DI BAWAH (DENGAN LOGIKA BARU) --- */}
+        {/* --- TOMBOL AKSI DI BAWAH --- */}
         <div className="mt-16 text-center px-4 pb-12">
           <Button 
-            onClick={handleStartClick} // Panggil fungsi, bukan Link langsung
+            onClick={handleStartClick} 
             size="lg" 
             className={cn(
               "w-full sm:w-auto h-auto py-4 sm:py-6 text-lg sm:text-xl px-6 sm:px-10 border-4 border-foreground shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-y-1 hover:shadow-none transition-all text-white font-black uppercase tracking-wide whitespace-normal break-words leading-tight",
@@ -203,7 +235,6 @@ const MaterialPage = () => {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <Card className="w-full max-w-md border-4 border-foreground shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] bg-white animate-in zoom-in-95 duration-200">
             <CardHeader className="bg-red-50 border-b-4 border-foreground pb-4 relative">
-              {/* Tombol Close (X) */}
               <button onClick={() => setShowConfirm(false)} className="absolute top-4 right-4 p-1 hover:bg-red-200 rounded transition-colors">
                 <X size={24} />
               </button>

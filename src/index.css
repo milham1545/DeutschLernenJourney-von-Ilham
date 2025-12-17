@@ -142,7 +142,7 @@ All colors MUST be HSL.
     --shadow-2xs: 1px 1px 0px 0px #ffffff;
     --shadow-xs: 2px 2px 0px 0px #ffffff;
     --shadow-sm: 3px 3px 0px 0px #ffffff;
-    --shadow: 5px 5px 0px 0px #ffffff;
+    --shadow-shadow: 5px 5px 0px 0px #ffffff;
     --shadow-md: 8px 8px 0px 0px #ffffff;
     --shadow-lg: 12px 12px 0px 0px #ffffff;
     --shadow-xl: 16px 16px 0px 0px #ffffff;
@@ -155,8 +155,25 @@ All colors MUST be HSL.
     @apply border-border;
   }
 
+  /* RESET CSS AGAR FULL WIDTH & HEIGHT */
+  html, body, #root {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  #root {
+    text-align: left; /* Mencegah konten di tengah secara default */
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }
 
